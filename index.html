@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <!-- ============================================ -->
+    <!-- META TAGS -->
+    <!-- ============================================ -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="صفحه شروع هوشمند با تقویم شمسی و میلادی، مدیریت یادداشت‌ها و دسترسی سریع به وب‌سایت‌های محبوب">
+    <meta name="keywords" content="تقویم شمسی, یادداشت, دسترسی سریع, صفحه شروع, new tab">
+    <meta name="author" content="Web Programming Course Project">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#0f1419">
+    <meta name="msapplication-TileColor" content="#0f1419">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="دستیار هوشمند">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="دستیار هوشمند | یادداشت و تقویم">
+    <meta property="og:description" content="صفحه شروع هوشمند با تقویم، یادداشت و دسترسی سریع">
+    
+    <!-- Title -->
+    <title>دستیار هوشمند | یادداشت و تقویم</title>
+    
+    <!-- ============================================ -->
+    <!-- PRECONNECT & PREFETCH -->
+    <!-- ============================================ -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="https://www.google.com">
+    
+    <!-- ============================================ -->
+    <!-- FONTS -->
+    <!-- ============================================ -->
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- ============================================ -->
+    <!-- STYLESHEETS -->
+    <!-- ============================================ -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/calendar.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+
+<body>
+    <!-- ============================================ -->
+    <!-- SKIP TO MAIN CONTENT (Accessibility) -->
+    <!-- ============================================ -->
+    <a href="#main-content" class="skip-to-content">رفتن به محتوای اصلی</a>
+
+    <!-- ============================================ -->
+    <!-- MAIN CONTAINER -->
+    <!-- ============================================ -->
+    <div class="container">
+        
+        <!-- ============================================ -->
+        <!-- HEADER SECTION -->
+        <!-- ============================================ -->
+        <header class="header" role="banner">
+            <div class="search-container">
+                <form class="search-form" id="searchForm" method="get" action="https://www.google.com/search" role="search" aria-label="فرم جستجو">
+                    
+                    <!-- Search Input Wrapper -->
+                    <div class="search-input-wrapper">
+                        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                        
+                        <input 
+                            type="text" 
+                            class="search-input" 
+                            name="q"
+                            placeholder="جستجو در گوگل یا وارد کردن آدرس..."
+                            id="searchInput"
+                            autocomplete="off"
+                            spellcheck="false"
+                            aria-label="جستجو"
+                        >
+                        
+                        <button 
+                            type="button" 
+                            class="voice-search-btn" 
+                            id="voiceSearchBtn" 
+                            aria-label="جستجوی صوتی" 
+                            title="جستجوی صوتی"
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                                <line x1="12" y1="19" x2="12" y2="23"></line>
+                                <line x1="8" y1="23" x2="16" y2="23"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Search Engine Options -->
+                    <div class="search-options" role="radiogroup" aria-label="انتخاب موتور جستجو">
+                        
+                        <!-- Google -->
+                        <label class="search-option active" title="Google">
+                            <input 
+                                type="radio" 
+                                name="search-engine" 
+                                value="google" 
+                                data-action="https://www.google.com/search" 
+                                data-param="q"
+                                checked 
+                                hidden
+                            >
+                            <img 
+                                src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%234285f4' d='M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z'/%3E%3Cpath fill='%2334a853' d='M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z'/%3E%3Cpath fill='%23fbbc05' d='M11.69 28.18c-.45-1.32-.7-2.73-.7-4.18s.25-2.86.7-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24s.85 6.91 2.34 9.88l5.35-5.7z'/%3E%3Cpath fill='%23ea4335' d='M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.19 6.58-9.07 12.31-9.07z'/%3E%3C/svg%3E" 
+                                alt="" 
+                                width="24" 
+                                height="24" 
+                                loading="lazy"
+                            >
+                            <span class="sr-only">Google</span>
+                        </label>
+                        
+                        <!-- Bing -->
+                        <label class="search-option" title="Bing">
+                            <input 
+                                type="radio" 
+                                name="search-engine" 
+                                value="bing" 
+                                data-action="https://www.bing.com/search" 
+                                data-param="q"
+                                hidden
+                            >
+                            <img 
+                                src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%2300809d' d='M10 6v36l14 6 14-7-5.6-2.4-8.4 2.8V12l12 4.6v13.6l-4 2.2V24l-4.6-1.8V36l14-6V14z'/%3E%3C/svg%3E" 
+                                alt="" 
+                                width="24" 
+                                height="24" 
+                                loading="lazy"
+                            >
+                            <span class="sr-only">Bing</span>
+                        </label>
+                        
+                        <!-- DuckDuckGo -->
+                        <label class="search-option" title="DuckDuckGo">
+                            <input 
+                                type="radio" 
+                                name="search-engine" 
+                                value="duckduckgo" 
+                                data-action="https://duckduckgo.com/" 
+                                data-param="q"
+                                hidden
+                            >
+                            <img 
+                                src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='20' fill='%23de5833'/%3E%3Cpath fill='white' d='M24 12c6.6 0 12 5.4 12 12s-5.4 12-12 12-12-5.4-12-12 5.4-12 12-12zm-4 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm8 0c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z'/%3E%3C/svg%3E" 
+                                alt="" 
+                                width="24" 
+                                height="24" 
+                                loading="lazy"
+                            >
+                            <span class="sr-only">DuckDuckGo</span>
+                        </label>
+                        
+                        <!-- Yahoo -->
+                        <label class="search-option" title="Yahoo">
+                            <input 
+                                type="radio" 
+                                name="search-engine" 
+                                value="yahoo" 
+                                data-action="https://search.yahoo.com/search" 
+                                data-param="p"
+                                hidden
+                            >
+                            <img 
+                                src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%235f01d1' d='M24 4l7 14h-14L24 4zm0 40l-7-14h14L24 44zm20-20l-14 7 7-14 7 7zM4 24l14-7-7 14-7-7z'/%3E%3C/svg%3E" 
+                                alt="" 
+                                width="24" 
+                                height="24" 
+                                loading="lazy"
+                            >
+                            <span class="sr-only">Yahoo</span>
+                        </label>
+                        
+                    </div>
+                </form>
+            </div>
+        </header>
+
+        <!-- ============================================ -->
+        <!-- MAIN CONTENT - 3 COLUMNS -->
+        <!-- ============================================ -->
+        <main class="main-content" id="main-content" role="main">
+            
+            <!-- ========================================= -->
+            <!-- RIGHT COLUMN: NOTES PANEL -->
+            <!-- ========================================= -->
+            <section class="notes-panel" aria-labelledby="notes-title">
+                <div class="panel-header">
+                    <h2 class="panel-title" id="notes-title">یادداشت‌های من</h2>
+                    <button 
+                        class="add-btn" 
+                        id="addNoteBtn" 
+                        aria-label="افزودن یادداشت جدید" 
+                        title="افزودن یادداشت"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="notes-list" id="notesList" role="list">
+                    <!-- Empty State -->
+                    <div class="empty-state" id="notesEmptyState">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="12" y1="18" x2="12" y2="12"></line>
+                            <line x1="9" y1="15" x2="15" y2="15"></line>
+                        </svg>
+                        <p>هنوز یادداشتی ندارید</p>
+                        <small>برای شروع روی دکمه + کلیک کنید</small>
+                    </div>
+                    
+                    <!-- Notes will be dynamically inserted here by JavaScript -->
+                </div>
+            </section>
+
+            <!-- ========================================= -->
+            <!-- CENTER COLUMN: QUICK ACCESS PANEL -->
+            <!-- ========================================= -->
+            <section class="quick-access-panel" aria-labelledby="quick-access-title">
+                <div class="panel-header">
+                    <h2 class="panel-title" id="quick-access-title">دسترسی سریع</h2>
+                </div>
+                
+                <div class="quick-access-grid" id="quickAccessGrid" role="list">
+                    
+                    <!-- Add New Tile Button -->
+                    <button 
+                        class="qa-tile qa-tile-add" 
+                        id="addQuickAccessBtn" 
+                        aria-label="افزودن لینک جدید"
+                        title="افزودن لینک جدید"
+                    >
+                        <div class="qa-tile-icon" aria-hidden="true">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                        </div>
+                        <span class="qa-tile-title">افزودن</span>
+                    </button>
+                    
+                    <!-- Quick access tiles will be dynamically inserted here by JavaScript -->
+                </div>
+            </section>
+
+            <!-- ========================================= -->
+            <!-- LEFT COLUMN: CALENDAR PANEL -->
+            <!-- ========================================= -->
+            <section class="calendar-panel" aria-labelledby="calendar-title">
+                <div class="panel-header">
+                    <h2 class="panel-title" id="calendar-title">تقویم</h2>
+                </div>
+
+                <!-- Calendar Type Toggle -->
+                <div class="calendar-toggle" role="tablist" aria-label="نوع تقویم">
+                    <button 
+                        class="toggle-btn active" 
+                        role="tab" 
+                        aria-selected="true" 
+                        aria-controls="gregorian-calendar" 
+                        data-type="gregorian" 
+                        id="gregorian-tab"
+                        tabindex="0"
+                    >
+                        میلادی
+                    </button>
+                    <button 
+                        class="toggle-btn" 
+                        role="tab" 
+                        aria-selected="false" 
+                        aria-controls="jalali-calendar" 
+                        data-type="jalali" 
+                        id="jalali-tab"
+                        tabindex="-1"
+                    >
+                        شمسی
+                    </button>
+                </div>
+
+                <!-- Gregorian Calendar Widget -->
+                <div 
+                    class="calendar-widget" 
+                    id="gregorian-calendar" 
+                    role="tabpanel" 
+                    aria-labelledby="gregorian-tab" 
+                    data-type="gregorian"
+                >
+                    <!-- Calendar Navigation -->
+                    <nav class="calendar-nav" aria-label="ناوبری تقویم">
+                        <button 
+                            class="nav-btn nav-prev" 
+                            id="prevMonthBtn" 
+                            aria-label="ماه قبل" 
+                            title="ماه قبل"
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
+                        </button>
+                        
+                        <div class="calendar-current" aria-live="polite" aria-atomic="true">
+                            <div class="current-month" id="currentMonth">نوامبر</div>
+                            <div class="current-year" id="currentYear">2025</div>
+                        </div>
+                        
+                        <button 
+                            class="nav-btn nav-next" 
+                            id="nextMonthBtn" 
+                            aria-label="ماه بعد" 
+                            title="ماه بعد"
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </button>
+                    </nav>
+
+                    <!-- Calendar Body -->
+                    <div class="calendar-body">
+                        
+                        <!-- Weekday Headers -->
+                        <div class="calendar-weekdays" role="row">
+                            <div class="weekday" role="columnheader" aria-label="شنبه">ش</div>
+                            <div class="weekday" role="columnheader" aria-label="یکشنبه">ی</div>
+                            <div class="weekday" role="columnheader" aria-label="دوشنبه">د</div>
+                            <div class="weekday" role="columnheader" aria-label="سه‌شنبه">س</div>
+                            <div class="weekday" role="columnheader" aria-label="چهارشنبه">چ</div>
+                            <div class="weekday" role="columnheader" aria-label="پنجشنبه">پ</div>
+                            <div class="weekday" role="columnheader" aria-label="جمعه">ج</div>
+                        </div>
+
+                        <!-- Days Grid -->
+                        <div 
+                            class="calendar-days" 
+                            id="calendarDays" 
+                            role="grid" 
+                            aria-label="روزهای ماه" 
+                            aria-readonly="false"
+                        >
+                            <!-- Days will be dynamically generated by JavaScript -->
+                            <!-- Example structure (will be replaced): -->
+                            <!--
+                            <button 
+                                class="day-cell" 
+                                role="gridcell" 
+                                aria-label="1 نوامبر 2025"
+                                data-date="2025-11-01"
+                            >
+                                <span class="day-number">1</span>
+                            </button>
+                            -->
+                        </div>
+                        
+                    </div>
+
+                    <!-- Calendar Actions -->
+                    <div class="calendar-actions">
+                        <button 
+                            class="action-btn today-btn" 
+                            id="todayBtn" 
+                            title="برو به امروز"
+                            aria-label="رفتن به تاریخ امروز"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                            <span>امروز</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Jalali Calendar Widget (Initially Hidden) -->
+                <div 
+                    class="calendar-widget" 
+                    id="jalali-calendar" 
+                    role="tabpanel" 
+                    aria-labelledby="jalali-tab" 
+                    data-type="jalali"
+                    hidden
+                >
+                    <!-- Same structure as Gregorian calendar -->
+                    <!-- Will be populated by JavaScript -->
+                </div>
+                
+            </section>
+
+        </main>
+
+        <!-- ============================================ -->
+        <!-- FOOTER -->
+        <!-- ============================================ -->
+        <footer class="footer" role="contentinfo">
+            <p>
+                &copy; <span id="currentJalaliYear">1404</span> - 
+                ساخته شده با <span aria-label="قلب" role="img">❤️</span> 
+                برای تمرین برنامه‌سازی وب
+            </p>
+        </footer>
+        
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL: ADD/EDIT NOTE -->
+    <!-- ============================================ -->
+    <div 
+        class="modal" 
+        id="noteModal" 
+        role="dialog" 
+        aria-modal="true" 
+        aria-labelledby="noteModalTitle" 
+        hidden
+    >
+        <div class="modal-overlay" aria-hidden="true"></div>
+        <div class="modal-content">
+            
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <h3 class="modal-title" id="noteModalTitle">یادداشت جدید</h3>
+                <button 
+                    class="modal-close" 
+                    id="closeNoteModal" 
+                    aria-label="بستن پنجره" 
+                    title="بستن"
+                >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <form class="modal-form" id="noteForm" novalidate>
+                    
+                    <!-- Title Field -->
+                    <div class="form-field">
+                        <label class="form-label" for="noteTitle">
+                            عنوان 
+                            <span class="required" aria-label="ضروری">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            class="form-input" 
+                            id="noteTitle" 
+                            placeholder="عنوان یادداشت..."
+                            required
+                            aria-required="true"
+                            maxlength="100"
+                            autocomplete="off"
+                        >
+                        <span class="form-error" id="noteTitleError" role="alert"></span>
+                    </div>
+                    
+                    <!-- Content Field -->
+                    <div class="form-field">
+                        <label class="form-label" for="noteContent">
+                            محتوا 
+                            <span class="required" aria-label="ضروری">*</span>
+                        </label>
+                        <textarea 
+                            class="form-textarea" 
+                            id="noteContent" 
+                            rows="6"
+                            placeholder="محتوای یادداشت..."
+                            maxlength="500"
+                            required
+                            aria-required="true"
+                            aria-describedby="charCount"
+                        ></textarea>
+                        <div class="char-counter" aria-live="polite" aria-atomic="true">
+                            <span id="charCount">0</span> / 500
+                        </div>
+                        <span class="form-error" id="noteContentError" role="alert"></span>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelNoteBtn">
+                            انصراف
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            ذخیره
+                        </button>
+                    </div>
+                    
+                </form>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL: DATE NOTES -->
+    <!-- ============================================ -->
+    <div 
+        class="modal" 
+        id="dateNotesModal" 
+        role="dialog" 
+        aria-modal="true" 
+        aria-labelledby="dateNotesTitle" 
+        hidden
+    >
+        <div class="modal-overlay" aria-hidden="true"></div>
+        <div class="modal-content">
+            
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <h3 class="modal-title" id="dateNotesTitle">یادداشت‌های روز</h3>
+                <button 
+                    class="modal-close" 
+                    id="closeDateNotesModal" 
+                    aria-label="بستن پنجره" 
+                    title="بستن"
+                >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="modal-body">
+                
+                <!-- Date Notes List -->
+                <div 
+                    class="date-notes-list" 
+                    id="dateNotesList" 
+                    role="list"
+                    aria-label="لیست یادداشت‌های این روز"
+                >
+                    <!-- Date notes will be inserted here by JavaScript -->
+                    <!-- Empty state will be shown if no notes exist -->
+                </div>
+                
+                <!-- Add Date Note Button -->
+                <button 
+                    class="btn btn-primary btn-block" 
+                    id="addDateNoteBtn"
+                    aria-label="افزودن یادداشت جدید برای این روز"
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>افزودن یادداشت</span>
+                </button>
+                
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MODAL: ADD QUICK ACCESS -->
+    <!-- ============================================ -->
+    <div 
+        class="modal" 
+        id="quickAccessModal" 
+        role="dialog" 
+        aria-modal="true" 
+        aria-labelledby="quickAccessModalTitle" 
+        hidden
+    >
+        <div class="modal-overlay" aria-hidden="true"></div>
+        <div class="modal-content">
+            
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <h3 class="modal-title" id="quickAccessModalTitle">افزودن لینک جدید</h3>
+                <button 
+                    class="modal-close" 
+                    id="closeQuickAccessModal" 
+                    aria-label="بستن پنجره" 
+                    title="بستن"
+                >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <form class="modal-form" id="quickAccessForm" novalidate>
+                    
+                    <!-- Title Field -->
+                    <div class="form-field">
+                        <label class="form-label" for="qaTitle">
+                            عنوان 
+                            <span class="required" aria-label="ضروری">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            class="form-input" 
+                            id="qaTitle" 
+                            placeholder="نام سایت یا لینک..."
+                            required
+                            aria-required="true"
+                            maxlength="50"
+                            autocomplete="off"
+                        >
+                        <span class="form-error" id="qaTitleError" role="alert"></span>
+                    </div>
+                    
+                    <!-- URL Field -->
+                    <div class="form-field">
+                        <label class="form-label" for="qaUrl">
+                            آدرس (URL) 
+                            <span class="required" aria-label="ضروری">*</span>
+                        </label>
+                        <input 
+                            type="url" 
+                            class="form-input" 
+                            id="qaUrl" 
+                            placeholder="https://example.com"
+                            required
+                            aria-required="true"
+                            pattern="https?://.+"
+                            autocomplete="url"
+                        >
+                        <span class="form-error" id="qaUrlError" role="alert"></span>
+                    </div>
+                    
+                    <!-- Icon Field -->
+                    <div class="form-field">
+                        <label class="form-label" for="qaIcon">آیکون (اختیاری)</label>
+                        <input 
+                            type="text" 
+                            class="form-input" 
+                            id="qaIcon" 
+                            placeholder="🌐"
+                            maxlength="10"
+                            autocomplete="off"
+                            aria-describedby="qaIconHelp"
+                        >
+                        <small class="form-help" id="qaIconHelp">
+                            می‌توانید ایموجی یا لینک تصویر استفاده کنید
+                        </small>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelQuickAccessBtn">
+                            انصراف
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            ذخیره
+                        </button>
+                    </div>
+                    
+                </form>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- TOAST NOTIFICATION -->
+    <!-- ============================================ -->
+    <div 
+        class="toast" 
+        id="toast" 
+        role="alert" 
+        aria-live="assertive" 
+        aria-atomic="true" 
+        hidden
+    >
+        <div class="toast-content">
+            <svg class="toast-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <p class="toast-message" id="toastMessage">عملیات با موفقیت انجام شد</p>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- JAVASCRIPT FILES -->
+    <!-- ============================================ -->
+    <script src="src/utils.js" defer></script>
+    <script src="src/storage.js" defer></script>
+    <script src="src/calendar.js" defer></script>
+    <script src="src/notes.js" defer></script>
+    <script src="src/quickaccess.js" defer></script>
+    <script src="src/search.js" defer></script>
+    <script src="src/app.js" defer></script>
+    
+</body>
+</html>
