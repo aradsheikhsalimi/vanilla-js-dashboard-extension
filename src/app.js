@@ -1,325 +1,382 @@
-/**
- * Dastyar Application - Main Application Logic (IMPROVED)
- * Handles: Search, Quick Access Links, General Notes, Date Notes
- */
-
 class DastyarApp {
     constructor() {
-        // State Management
         this.state = {
             notes: [],
-            dateNotes: {},
             quickLinks: [],
-            settings: {
-                calendarType: 'gregorian' // or 'jalali'
-            }
+            currentCalendarType: 'gregorian',
+            currentDate: new Date(),
+            dateNotes: {} // Format: { 'YYYY-MM-DD': [{id, title, content, createdAt}] }
         };
 
-        // DOM Elements Cache
         this.elements = {};
-        this.missingElements = [];
-
-        // Initialize
         this.init();
     }
 
     /**
-     * Initialize Application
+     * Initialize the application
      */
-    init() {
-        this.cacheElements();
-        this.validateElements();
-        this.loadFromStorage();
-        this.setupEventListeners();
-        this.render();
+    async init() {
+        try {
+            this.cacheElements();
+            this.loadFromStorage();
+            this.setupEventListeners();
+            this.renderNotes();
+            this.renderQuickLinks();
+            this.renderCalendar();
+            this.updateDateTime();
+            
+            // Update time every minute
+            setInterval(() => this.updateDateTime(), 60000);
+            
+            console.log('✅ Dastyar App initialized successfully');
+        } catch (error) {
+            console.error('❌ Error initializing app:', error);
+            this.showToast('خطا در راه‌اندازی برنامه', 'error');
+        }
     }
 
     /**
-     * Cache DOM Elements with Error Tracking
+     * Cache all DOM elements for better performance
      */
     cacheElements() {
-        const elementIds = {
-            // Search Bar
-            searchInput: 'searchInput',
-            searchBtn: 'searchBtn',
+        // Search elements
+        this.elements.searchInput = document.getElementById('searchInput');
+        this.elements.searchOptions = document.querySelectorAll('.search-option');
+        this.elements.searchForm = document.getElementById('searchForm');
 
-            // Quick Access
-            quickAccessGrid: 'quickAccessGrid',
-            addTileBtn: 'addTileBtn',
+        // Notes elements
+        this.elements.notesContainer = document.getElementById('notesContainer');
+        this.elements.addNoteBtn = document.getElementById('addNoteBtn');
+        this.elements.noteModal = document.getElementById('noteModal');
+        this.elements.noteForm = document.getElementById('noteForm');
+        this.elements.noteTitle = document.getElementById('noteTitle');
+        this.elements.noteContent = document.getElementById('noteContent');
+        this.elements.charCount = document.getElementById('charCount');
+        this.elements.cancelNoteBtn = document.getElementById('cancelNoteBtn');
 
-            // Notes Section
-            notesContainer: 'notesContainer',
-            addNoteBtn: 'addNoteBtn',
-            generalNotesTab: 'generalNotesTab',
-            dateNotesTab: 'dateNotesTab',
+        // Quick Access elements
+        this.elements.quickLinksContainer = document.getElementById('quickLinksContainer');
+        this.elements.addLinkBtn = document.getElementById('addLinkBtn');
+        this.elements.linkModal = document.getElementById('linkModal');
+        this.elements.linkForm = document.getElementById('linkForm');
+        this.elements.linkTitle = document.getElementById('linkTitle');
+        this.elements.linkUrl = document.getElementById('linkUrl');
+        this.elements.linkIcon = document.getElementById('linkIcon');
+        this.elements.cancelLinkBtn = document.getElementById('cancelLinkBtn');
 
-            // Modals
-            linkModal: 'linkModal',
-            noteModal: 'noteModal',
-            dateNoteModal: 'dateNoteModal',
+        // Calendar elements
+        this.elements.calendarGrid = document.getElementById('calendarGrid');
+        this.elements.currentMonthYear = document.getElementById('currentMonthYear');
+        this.elements.prevMonthBtn = document.getElementById('prevMonthBtn');
+        this.elements.nextMonthBtn = document.getElementById('nextMonthBtn');
+        this.elements.todayBtn = document.getElementById('todayBtn');
+        this.elements.calendarToggle = document.getElementById('calendarToggle');
+        this.elements.calendarTypeLabel = document.getElementById('calendarTypeLabel');
 
-            // Modal Forms
-            linkForm: 'linkForm',
-            noteForm: 'noteForm',
-            dateNoteForm: 'dateNoteForm'
-        };
+        // Date Note Modal elements
+        this.elements.dateNoteModal = document.getElementById('dateNoteModal');
+        this.elements.dateNotesList = document.getElementById('dateNotesList');
+        this.elements.addDateNoteBtn = document.getElementById('addDateNoteBtn');
+        this.elements.closeDateNoteBtn = document.getElementById('closeDateNoteBtn');
 
-        for (const [key, id] of Object.entries(elementIds)) {
-            const element = document.getElementById(id);
-            this.elements[key] = element;
-
-            if (!element) {
-                this.missingElements.push(id);
-            }
-        }
-
-        // Cache close buttons
-        this.elements.closeBtns = document.querySelectorAll('.close-modal');
+        // Toast
+        this.elements.toast = document.getElementById('toast');
     }
 
     /**
-     * Validate and Report Missing Elements
-     */
-    validateElements() {
-        if (this.missingElements.length > 0) {
-            console.warn(
-                '⚠️ Missing HTML Elements:',
-                this.missingElements.join(', ')
-            );
-        }
-    }
-
-    /**
-     * Setup Event Listeners with Safe Checks
+     * Setup all event listeners with Event Delegation
      */
     setupEventListeners() {
-        // Search Functionality
-        if (this.elements.searchBtn) {
-            this.elements.searchBtn.addEventListener('click', () => this.handleSearch());
+        // Search Form Submit
+        if (this.elements.searchForm) {
+            this.elements.searchForm.addEventListener('submit', (e) => this.handleSearch(e));
         }
-        
-        if (this.elements.searchInput) {
-            this.elements.searchInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') this.handleSearch();
+
+        // Search Options (Event Delegation)
+        if (this.elements.searchOptions) {
+            this.elements.searchOptions.forEach(option => {
+                option.addEventListener('click', (e) => {
+                    this.elements.searchOptions.forEach(opt => opt.classList.remove('active'));
+                    e.currentTarget.classList.add('active');
+                });
             });
         }
 
-        // Quick Access
-        if (this.elements.addTileBtn) {
-            this.elements.addTileBtn.addEventListener('click', () => this.showLinkModal());
-        }
-
-        // Notes
+        // Notes: Add Note Button
         if (this.elements.addNoteBtn) {
             this.elements.addNoteBtn.addEventListener('click', () => this.showNoteModal());
         }
 
-        if (this.elements.generalNotesTab) {
-            this.elements.generalNotesTab.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.switchNotesTab('general');
-            });
-        }
-
-        if (this.elements.dateNotesTab) {
-            this.elements.dateNotesTab.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.switchNotesTab('date');
-            });
-        }
-
-        // Modal Forms
-        if (this.elements.linkForm) {
-            this.elements.linkForm.addEventListener('submit', (e) => this.handleLinkSubmit(e));
-        }
-
+        // Notes: Form Submit
         if (this.elements.noteForm) {
             this.elements.noteForm.addEventListener('submit', (e) => this.handleNoteSubmit(e));
         }
 
-        if (this.elements.dateNoteForm) {
-            this.elements.dateNoteForm.addEventListener('submit', (e) => this.handleDateNoteSubmit(e));
+        // Notes: Cancel Button
+        if (this.elements.cancelNoteBtn) {
+            this.elements.cancelNoteBtn.addEventListener('click', () => this.closeAllModals());
         }
 
-        // Close Modals
-        this.elements.closeBtns.forEach(btn => {
-            btn.addEventListener('click', () => this.closeAllModals());
-        });
+        // Notes: Character Counter
+        if (this.elements.noteContent) {
+            this.elements.noteContent.addEventListener('input', (e) => {
+                const count = e.target.value.length;
+                if (this.elements.charCount) {
+                    this.elements.charCount.textContent = `${count} / 500`;
+                }
+            });
+        }
 
-        // Close modal on outside click
-        window.addEventListener('click', (e) => {
-            if (e.target.classList.contains('modal')) {
+        // Notes Container: Event Delegation for Edit/Delete
+        if (this.elements.notesContainer) {
+            this.elements.notesContainer.addEventListener('click', (e) => {
+                const editBtn = e.target.closest('.note-edit');
+                const deleteBtn = e.target.closest('.note-delete');
+
+                if (editBtn) {
+                    const noteId = editBtn.dataset.id;
+                    this.editNote(noteId);
+                } else if (deleteBtn) {
+                    const noteId = deleteBtn.dataset.id;
+                    this.deleteNote(noteId);
+                }
+            });
+        }
+
+        // Quick Links: Add Link Button
+        if (this.elements.addLinkBtn) {
+            this.elements.addLinkBtn.addEventListener('click', () => this.showLinkModal());
+        }
+
+        // Quick Links: Form Submit
+        if (this.elements.linkForm) {
+            this.elements.linkForm.addEventListener('submit', (e) => this.handleLinkSubmit(e));
+        }
+
+        // Quick Links: Cancel Button
+        if (this.elements.cancelLinkBtn) {
+            this.elements.cancelLinkBtn.addEventListener('click', () => this.closeAllModals());
+        }
+
+        // Quick Links Container: Event Delegation for Edit/Delete
+        if (this.elements.quickLinksContainer) {
+            this.elements.quickLinksContainer.addEventListener('click', (e) => {
+                const editBtn = e.target.closest('.link-edit');
+                const deleteBtn = e.target.closest('.link-delete');
+
+                if (editBtn) {
+                    const linkId = editBtn.dataset.id;
+                    this.editLink(linkId);
+                } else if (deleteBtn) {
+                    const linkId = deleteBtn.dataset.id;
+                    this.deleteLink(linkId);
+                }
+            });
+        }
+
+        // Calendar: Navigation Buttons
+        if (this.elements.prevMonthBtn) {
+            this.elements.prevMonthBtn.addEventListener('click', () => this.navigateMonth(-1));
+        }
+        if (this.elements.nextMonthBtn) {
+            this.elements.nextMonthBtn.addEventListener('click', () => this.navigateMonth(1));
+        }
+        if (this.elements.todayBtn) {
+            this.elements.todayBtn.addEventListener('click', () => this.goToToday());
+        }
+
+        // Calendar: Type Toggle
+        if (this.elements.calendarToggle) {
+            this.elements.calendarToggle.addEventListener('change', (e) => {
+                this.state.currentCalendarType = e.target.checked ? 'jalali' : 'gregorian';
+                this.renderCalendar();
+            });
+        }
+
+        // Calendar Grid: Event Delegation for Date Clicks
+        if (this.elements.calendarGrid) {
+            this.elements.calendarGrid.addEventListener('click', (e) => {
+                const dateCell = e.target.closest('.calendar-day[data-date]');
+                if (dateCell && !dateCell.classList.contains('other-month')) {
+                    const dateKey = dateCell.dataset.date;
+                    this.showDateNoteModal(dateKey);
+                }
+            });
+        }
+
+        // Date Note Modal: Add Date Note Button
+        if (this.elements.addDateNoteBtn) {
+            this.elements.addDateNoteBtn.addEventListener('click', () => {
+                const dateKey = this.elements.dateNoteModal?.dataset.currentDate;
+                if (dateKey) {
+                    // Close date modal and open note form
+                    this.elements.dateNoteModal.classList.remove('active');
+                    
+                    // Mark that this note is for a specific date
+                    this.elements.noteForm.dataset.dateContext = dateKey;
+                    
+                    this.showNoteModal();
+                }
+            });
+        }
+
+        // Date Note Modal: Close Button
+        if (this.elements.closeDateNoteBtn) {
+            this.elements.closeDateNoteBtn.addEventListener('click', () => {
+                this.elements.dateNoteModal?.classList.remove('active');
+            });
+        }
+
+        // Date Notes List: Event Delegation for Delete
+        if (this.elements.dateNotesList) {
+            this.elements.dateNotesList.addEventListener('click', (e) => {
+                const deleteBtn = e.target.closest('.date-note-delete');
+                if (deleteBtn) {
+                    const noteId = deleteBtn.dataset.id;
+                    const dateKey = this.elements.dateNoteModal?.dataset.currentDate;
+                    if (dateKey) {
+                        this.deleteDateNote(dateKey, noteId);
+                    }
+                }
+            });
+        }
+
+        // Modal Background Click (Close modals)
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal') && e.target.classList.contains('active')) {
                 this.closeAllModals();
             }
         });
 
-        // Keyboard shortcuts
+        // Escape Key (Close modals)
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') this.closeAllModals();
+            if (e.key === 'Escape') {
+                this.closeAllModals();
+            }
         });
     }
 
-    /**
-     * Handle Google Search
-     */
-    handleSearch() {
-        const query = this.elements.searchInput?.value.trim();
-        if (query) {
-            const searchUrl = $`https://www.google.com/search?q=${encodeURIComponent(query)}`;
-            window.open(searchUrl, '_blank');
-            if (this.elements.searchInput) {
-                this.elements.searchInput.value = '';
-            }
-        }
-    }
+    // ============================================
+    // SEARCH FUNCTIONALITY
+    // ============================================
 
-    /**
-     * Quick Access - Show Link Modal (IMPROVED)
-     */
-    showLinkModal(linkData = null) {
-        const modal = this.elements.linkModal;
-        const form = this.elements.linkForm;
-        
-        if (!modal || !form) {
-            console.error('Link modal or form not found');
-            return;
-        }
-
-        // Reset or populate form
-        if (linkData) {
-            form.linkTitle.value = linkData.title || '';
-            form.linkUrl.value = linkData.url || '';
-            form.linkIcon.value = linkData.icon || '';
-            form.dataset.editId = linkData.id;
-        } else {
-            form.reset();
-            delete form.dataset.editId;
-        }
-
-        modal.classList.add('active');
-    }
-
-    /**
-     * Handle Link Form Submit (IMPROVED - SAFE EVENT DELEGATION)
-     */
-    handleLinkSubmit(e) {
+    handleSearch(e) {
         e.preventDefault();
-        const form = e.target;
-        const formData = new FormData(form);
-
-        const title = formData.get('linkTitle')?.trim();
-        const url = formData.get('linkUrl')?.trim();
-        const icon = formData.get('linkIcon')?.trim();
-
-        if (!title || !url) {
-            this.showToast('لطفاً تمام فیلدها را پر کنید', 'error');
+        
+        const query = this.elements.searchInput?.value.trim();
+        if (!query) {
+            this.showToast('لطفاً عبارت جستجو را وارد کنید', 'error');
             return;
         }
 
-        const linkData = {
-            id: form.dataset.editId || this.generateId(),
-            title: title,
-            url: this.normalizeUrl(url),
-            icon: icon || this.getFaviconUrl(url) // ✅ IMPROVED: Auto-fetch favicon
+        const activeOption = document.querySelector('.search-option.active');
+        const searchEngine = activeOption?.dataset.engine || 'google';
+
+        const searchUrls = {
+            google: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
+            bing: `https://www.bing.com/search?q=${encodeURIComponent(query)}`,
+            duckduckgo: `https://duckduckgo.com/?q=${encodeURIComponent(query)}`,
+            yahoo: `https://search.yahoo.com/search?p=${encodeURIComponent(query)}`
         };
 
-        if (form.dataset.editId) {
-            // Edit existing link
-            const index = this.state.quickLinks.findIndex(l => l.id === linkData.id);
-            if (index !== -1) {
-                this.state.quickLinks[index] = linkData;
+        const url = searchUrls[searchEngine];
+        if (url) {
+            window.location.href = url;
+        }
+    }
+
+    // ============================================
+    // NOTES FUNCTIONALITY
+    // ============================================
+
+    showNoteModal(note = null) {
+        if (!this.elements.noteModal) return;
+
+        if (note) {
+            // Edit mode
+            this.elements.noteTitle.value = note.title;
+            this.elements.noteContent.value = note.content;
+            this.elements.noteForm.dataset.editId = note.id;
+            if (this.elements.charCount) {
+                this.elements.charCount.textContent = `${note.content.length} / 500`;
             }
         } else {
-            // Add new link
-            this.state.quickLinks.push(linkData);
+            // Create mode
+            this.elements.noteForm?.reset();
+            delete this.elements.noteForm?.dataset.editId;
+            if (this.elements.charCount) {
+                this.elements.charCount.textContent = '0 / 500';
+            }
         }
 
-        this.saveToStorage();
-        this.renderQuickLinks();
-        this.closeAllModals();
-        this.showToast('لینک با موفقیت ذخیره شد', 'success');
+        this.elements.noteModal.classList.add('active');
+        this.elements.noteTitle?.focus();
     }
 
-    /**
-     * Delete Quick Access Link with Delegation (IMPROVED)
-     */
-    deleteLink(linkId) {
-        if (confirm('آیا از حذف این لینک اطمینان دارید؟')) {
-            this.state.quickLinks = this.state.quickLinks.filter(l => l.id !== linkId);
-            this.saveToStorage();
-            this.renderQuickLinks();
-            this.showToast('لینک حذف شد', 'success');
-        }
-    }
-
-    /**
-     * Notes - Show Note Modal
-     */
-    showNoteModal(noteData = null) {
-        const modal = this.elements.noteModal;
-        const form = this.elements.noteForm;
-        
-        if (!modal || !form) {
-            console.error('Note modal or form not found');
-            return;
-        }
-
-        if (noteData) {
-            form.noteTitle.value = noteData.title || '';
-            form.noteContent.value = noteData.content || '';
-            form.dataset.editId = noteData.id;
-        } else {
-            form.reset();
-            delete form.dataset.editId;
-        }
-
-        modal.classList.add('active');
-    }
-
-    /**
-     * Handle Note Form Submit
-     */
     handleNoteSubmit(e) {
         e.preventDefault();
-        const form = e.target;
-        const formData = new FormData(form);
 
-        const title = formData.get('noteTitle')?.trim();
-        const content = formData.get('noteContent')?.trim();
+        const title = this.elements.noteTitle?.value.trim();
+        const content = this.elements.noteContent?.value.trim();
 
         if (!title || !content) {
-            this.showToast('لطفاً تمام فیلدها را پر کنید', 'error');
+            this.showToast('لطفاً عنوان و محتوا را وارد کنید', 'error');
             return;
         }
 
-        const existingNote = this.state.notes.find(n => n.id === form.dataset.editId);
+        if (content.length > 500) {
+            this.showToast('محتوا نباید بیشتر از ۵۰۰ کاراکتر باشد', 'error');
+            return;
+        }
 
-        const noteData = {
-            id: form.dataset.editId || this.generateId(),
-            title: title,
-            content: content,
-            createdAt: existingNote?.createdAt || new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
+        const editId = this.elements.noteForm?.dataset.editId;
+        const dateContext = this.elements.noteForm?.dataset.dateContext;
 
-        if (form.dataset.editId) {
-            const index = this.state.notes.findIndex(n => n.id === noteData.id);
+        // If this note is for a specific date
+        if (dateContext) {
+            this.addDateNote(dateContext, title, content);
+            delete this.elements.noteForm.dataset.dateContext;
+            this.closeAllModals();
+            this.showDateNoteModal(dateContext); // Return to date modal
+            return;
+        }
+
+        // Regular note
+        if (editId) {
+            // Edit existing note
+            const index = this.state.notes.findIndex(n => n.id === editId);
             if (index !== -1) {
-                this.state.notes[index] = noteData;
+                this.state.notes[index] = {
+                    ...this.state.notes[index],
+                    title,
+                    content,
+                    updatedAt: new Date().toISOString()
+                };
             }
         } else {
-            this.state.notes.unshift(noteData);
+            // Create new note
+            const newNote = {
+                id: this.generateId(),
+                title,
+                content,
+                createdAt: new Date().toISOString()
+            };
+            this.state.notes.push(newNote);
         }
 
         this.saveToStorage();
         this.renderNotes();
         this.closeAllModals();
-        this.showToast('یادداشت ذخیره شد', 'success');
+        this.showToast('یادداشت با موفقیت ذخیره شد', 'success');
     }
 
-    /**
-     * Delete Note
-     */
+    editNote(noteId) {
+        const note = this.state.notes.find(n => n.id === noteId);
+        if (note) {
+            this.showNoteModal(note);
+        }
+    }
+
     deleteNote(noteId) {
         if (confirm('آیا از حذف این یادداشت اطمینان دارید؟')) {
             this.state.notes = this.state.notes.filter(n => n.id !== noteId);
@@ -329,493 +386,555 @@ class DastyarApp {
         }
     }
 
-    /**
-     * Date Notes - Show Modal (IMPROVED - BETTER PARAMETER HANDLING)
-     */
-    showDateNoteModal(dateKey, noteData = null) {
-        const modal = this.elements.dateNoteModal;
-        const form = this.elements.dateNoteForm;
-        
-        if (!modal || !form) {
-            console.error('Date note modal or form not found');
-            return;
-        }
-
-        form.dataset.dateKey = dateKey;
-
-        if (noteData) {
-            form.dateNoteTitle.value = noteData.title || '';
-            form.dateNoteContent.value = noteData.content || '';
-            form.dataset.editId = noteData.id;
-        } else {
-            form.reset();
-            delete form.dataset.editId;
-        }
-
-        // Update modal title with date
-        const modalTitle = modal.querySelector('.modal-header h3');
-        if (modalTitle) {
-            modalTitle.textContent = `یادداشت برای ${dateKey}`;
-        }
-
-        modal.classList.add('active');
-    }
-
-    /**
-     * Handle Date Note Form Submit
-     */
-    handleDateNoteSubmit(e) {
-        e.preventDefault();
-        const form = e.target;
-        const formData = new FormData(form);
-        const dateKey = form.dataset.dateKey;
-
-        if (!dateKey) {
-            this.showToast('تاریخ مشخص نشده است', 'error');
-            return;
-        }
-
-        const title = formData.get('dateNoteTitle')?.trim();
-        const content = formData.get('dateNoteContent')?.trim();
-
-        if (!title || !content) {
-            this.showToast('لطفاً تمام فیلدها را پر کنید', 'error');
-            return;
-        }
-
-        const existingNote = this.getDateNote(dateKey, form.dataset.editId);
-
-        const noteData = {
-            id: form.dataset.editId || this.generateId(),
-            title: title,
-            content: content,
-            createdAt: existingNote?.createdAt || new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
-
-        // Initialize date notes array if doesn't exist
-        if (!this.state.dateNotes[dateKey]) {
-            this.state.dateNotes[dateKey] = [];
-        }
-
-        if (form.dataset.editId) {
-            const index = this.state.dateNotes[dateKey].findIndex(n => n.id === noteData.id);
-            if (index !== -1) {
-                this.state.dateNotes[dateKey][index] = noteData;
-            }
-        } else {
-            this.state.dateNotes[dateKey].unshift(noteData);
-        }
-
-        this.saveToStorage();
-        this.closeAllModals();
-        this.showToast('یادداشت تاریخ ذخیره شد', 'success');
-
-        // ✅ CRITICAL: Update calendar to show note indicator
-        this.notifyCalendarUpdate(dateKey);
-    }
-
-    /**
-     * Delete Date Note
-     */
-    deleteDateNote(dateKey, noteId) {
-        if (confirm('آیا از حذف این یادداشت اطمینان دارید؟')) {
-            if (this.state.dateNotes[dateKey]) {
-                this.state.dateNotes[dateKey] = this.state.dateNotes[dateKey].filter(n => n.id !== noteId);
-                
-                // Remove date key if no notes left
-                if (this.state.dateNotes[dateKey].length === 0) {
-                    delete this.state.dateNotes[dateKey];
-                }
-                
-                this.saveToStorage();
-                this.showToast('یادداشت حذف شد', 'success');
-
-                // ✅ Update calendar
-                this.notifyCalendarUpdate(dateKey);
-            }
-        }
-    }
-
-    /**
-     * Get Date Note by ID
-     */
-    getDateNote(dateKey, noteId) {
-        if (!noteId) return null;
-        return this.state.dateNotes[dateKey]?.find(n => n.id === noteId);
-    }
-
-    /**
-     * Check if date has notes
-     */
-    hasNotesForDate(dateKey) {
-        return this.state.dateNotes[dateKey] && this.state.dateNotes[dateKey].length > 0;
-    }
-
-    /**
-     * Get notes for specific date
-     */
-    getNotesForDate(dateKey) {
-        return this.state.dateNotes[dateKey] || [];
-    }
-
-    /**
-     * ✅ NEW: Notify Calendar About Updates
-     * This allows the calendar to update UI without tight coupling
-     */
-    notifyCalendarUpdate(dateKey) {
-        // Emit a custom event so calendar can listen
-        const event = new CustomEvent('dateNotesChanged', {
-            detail: { dateKey: dateKey }
-        });
-        document.dispatchEvent(event);
-
-        // Also support direct method call if calendar exists
-        if (window.calendar && typeof window.calendar.updateDateIndicators === 'function') {
-            window.calendar.updateDateIndicators();
-        }
-    }
-
-    /**
-     * Switch Notes Tab (IMPROVED)
-     */
-    switchNotesTab(tab) {
-        const tabs = document.querySelectorAll('.tab-btn');
-        tabs.forEach(t => t.classList.remove('active'));
-
-        if (tab === 'general') {
-            if (this.elements.generalNotesTab) {
-                this.elements.generalNotesTab.classList.add('active');
-            }
-            this.renderNotes();
-        } else if (tab === 'date') {
-            if (this.elements.dateNotesTab) {
-                this.elements.dateNotesTab.classList.add('active');
-            }
-            this.renderDateNotes();
-        }
-    }
-
-    /**
-     * Render Quick Access Links (IMPROVED - EVENT DELEGATION)
-     */
-    renderQuickLinks() {
-        if (!this.elements.quickAccessGrid) return;
-
-        const linksHtml = this.state.quickLinks.map(link => {
-            const iconHtml = link.icon.startsWith('http') 
-                ? `<img src="${this.sanitizeHtml(link.icon)}" alt="icon">`
-                : `<span>${this.sanitizeHtml(link.icon)}</span>`;
-
-            return `
-                <div class="quick-access-tile" data-id="${this.sanitizeHtml(link.id)}">
-                    <a href="${this.sanitizeHtml(link.url)}" target="_blank" class="tile-link">
-                        <div class="quick-access-icon">${iconHtml}</div>
-                        <div class="quick-access-title">${this.sanitizeHtml(link.title)}</div>
-                    </a>
-                    <div class="tile-actions">
-                        <button class="tile-edit-btn" data-action="edit" data-id="${this.sanitizeHtml(link.id)}" title="ویرایش">
-                            ✏️
-                        </button>
-                        <button class="tile-delete-btn" data-action="delete" data-id="${this.sanitizeHtml(link.id)}" title="حذف">
-                            🗑️
-                        </button>
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        const addTileHtml = `
-            <div class="quick-access-tile add-tile-btn" id="addTileBtn">
-                <div class="add-icon">+</div>
-                <div class="quick-access-title">افزودن لینک</div>
-            </div>
-        `;
-
-        this.elements.quickAccessGrid.innerHTML = linksHtml + addTileHtml;
-
-        // ✅ Event Delegation (Safe approach)
-        this.elements.quickAccessGrid.addEventListener('click', (e) => {
-            const editBtn = e.target.closest('.tile-edit-btn');
-            const deleteBtn = e.target.closest('.tile-delete-btn');
-            const addBtn = e.target.closest('#addTileBtn');
-
-            if (editBtn) {
-                const linkId = editBtn.dataset.id;
-                const link = this.state.quickLinks.find(l => l.id === linkId);
-                if (link) this.showLinkModal(link);
-            } else if (deleteBtn) {
-                const linkId = deleteBtn.dataset.id;
-                this.deleteLink(linkId);
-            } else if (addBtn) {
-                this.showLinkModal();
-            }
-        });
-
-        // Re-attach add button listener
-        const newAddBtn = document.getElementById('addTileBtn');
-        if (newAddBtn) {
-            newAddBtn.addEventListener('click', () => this.showLinkModal());
-        }
-    }
-
-    /**
-     * Render General Notes
-     */
     renderNotes() {
         if (!this.elements.notesContainer) return;
 
         if (this.state.notes.length === 0) {
             this.elements.notesContainer.innerHTML = `
                 <div class="empty-state">
-                    <p>هیچ یادداشتی وجود ندارد</p>
+                    <p>هنوز یادداشتی ندارید</p>
                 </div>
             `;
             return;
         }
 
-        const notesHtml = this.state.notes.map(note => `
-            <div class="note-item" data-id="${this.sanitizeHtml(note.id)}">
-                <h4 class="note-title">${this.sanitizeHtml(note.title)}</h4>
-                <p class="note-content">${this.sanitizeHtml(note.content)}</p>
-                <div class="note-footer">
-                    <span class="note-date">${this.formatDateTime(note.updatedAt)}</span>
-                    <div class="note-actions">
-                        <button class="note-edit-btn" data-action="edit" data-id="${this.sanitizeHtml(note.id)}">
-                            ویرایش
-                        </button>
-                        <button class="note-delete-btn" data-action="delete" data-id="${this.sanitizeHtml(note.id)}">
-                            حذف
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-
-        this.elements.notesContainer.innerHTML = notesHtml;
-
-        // ✅ Event Delegation
-        this.elements.notesContainer.addEventListener('click', (e) => {
-            const editBtn = e.target.closest('.note-edit-btn');
-            const deleteBtn = e.target.closest('.note-delete-btn');
-
-            if (editBtn) {
-                const noteId = editBtn.dataset.id;
-                const note = this.state.notes.find(n => n.id === noteId);
-                if (note) this.showNoteModal(note);
-            } else if (deleteBtn) {
-                const noteId = deleteBtn.dataset.id;
-                this.deleteNote(noteId);
-            }
-        });
-    }
-
-    /**
-     * Render Date Notes Overview
-     */
-    renderDateNotes() {
-        if (!this.elements.notesContainer) return;
-
-        const dates = Object.keys(this.state.dateNotes).sort();
-        
-        if (dates.length === 0) {
-            this.elements.notesContainer.innerHTML = `
-                <div class="empty-state">
-                    <p>هیچ یادداشت تاریخی وجود ندارد</p>
-                    <p class="empty-state-hint">روی تاریخ در تقویم کلیک کنید</p>
-                </div>
-            `;
-            return;
-        }
-
-        const dateNotesHtml = dates.map(dateKey => {
-            const notes = this.state.dateNotes[dateKey];
+        const notesHtml = this.state.notes.map(note => {
+            const date = new Date(note.createdAt);
+            const formattedDate = this.formatDate(date);
+            
             return `
-                <div class="date-notes-group">
-                    <h3 class="date-notes-header">${dateKey}</h3>
-                    <div class="notes-list">
-                        ${notes.map(note => `
-                            <div class="note-item" data-id="${this.sanitizeHtml(note.id)}" data-date="${this.sanitizeHtml(dateKey)}">
-                                <h4 class="note-title">${this.sanitizeHtml(note.title)}</h4>
-                                <p class="note-content">${this.sanitizeHtml(note.content)}</p>
-                                <div class="note-footer">
-                                    <span class="note-date">${this.formatDateTime(note.updatedAt)}</span>
-                                    <div class="note-actions">
-                                        <button class="note-edit-btn" data-action="edit" data-id="${this.sanitizeHtml(note.id)}" data-date="${this.sanitizeHtml(dateKey)}">
-                                            ویرایش
-                                        </button>
-                                        <button class="note-delete-btn" data-action="delete" data-id="${this.sanitizeHtml(note.id)}" data-date="${this.sanitizeHtml(dateKey)}">
-                                            حذف
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        `).join('')}
+                <div class="note-card">
+                    <div class="note-header">
+                        <h3 class="note-title">${this.sanitizeHtml(note.title)}</h3>
+                        <div class="note-actions">
+                            <button class="note-edit" data-id="${note.id}" title="ویرایش">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="note-delete" data-id="${note.id}" title="حذف">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <p class="note-content">${this.sanitizeHtml(note.content)}</p>
+                    <div class="note-footer">
+                        <span class="note-date">${formattedDate}</span>
                     </div>
                 </div>
             `;
         }).join('');
 
-        this.elements.notesContainer.innerHTML = dateNotesHtml;
-
-        // ✅ Event Delegation for Date Notes
-        this.elements.notesContainer.addEventListener('click', (e) => {
-            const editBtn = e.target.closest('.note-edit-btn');
-            const deleteBtn = e.target.closest('.note-delete-btn');
-
-            if (editBtn) {
-                const noteId = editBtn.dataset.id;
-                const dateKey = editBtn.dataset.date;
-                const note = this.getDateNote(dateKey, noteId);
-                if (note) this.showDateNoteModal(dateKey, note);
-            } else if (deleteBtn) {
-                const noteId = deleteBtn.dataset.id;
-                const dateKey = deleteBtn.dataset.date;
-                this.deleteDateNote(dateKey, noteId);
-            }
-        });
+        this.elements.notesContainer.innerHTML = notesHtml;
     }
 
-    /**
-     * Render All Components
-     */
-    render() {
-        this.renderQuickLinks();
-        this.renderNotes();
-    }
+    // ============================================
+    // QUICK ACCESS FUNCTIONALITY
+    // ============================================
 
-    /**
-     * Close All Modals
-     */
-    closeAllModals() {
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.classList.remove('active');
-        });
-    }
+    showLinkModal(link = null) {
+        if (!this.elements.linkModal) return;
 
-    /**
-     * Show Toast Notification
-     */
-    showToast(message, type = 'success') {
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.textContent = message;
-        
-        document.body.appendChild(toast);
-        
-        setTimeout(() => toast.classList.add('show'), 100);
-        
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
-    }
-
-    /**
-     * Storage - Save to LocalStorage
-     */
-    saveToStorage() {
-        try {
-            localStorage.setItem('dastyar_data', JSON.stringify(this.state));
-        } catch (error) {
-            console.error('Error saving to storage:', error);
-            this.showToast('خطا در ذخیره‌سازی', 'error');
+        if (link) {
+            // Edit mode
+            this.elements.linkTitle.value = link.title;
+            this.elements.linkUrl.value = link.url;
+            this.elements.linkIcon.value = link.icon || '';
+            this.elements.linkForm.dataset.editId = link.id;
+        } else {
+            // Create mode
+            this.elements.linkForm?.reset();
+            delete this.elements.linkForm?.dataset.editId;
         }
+
+        this.elements.linkModal.classList.add('active');
+        this.elements.linkTitle?.focus();
     }
 
-    /**
-     * Storage - Load from LocalStorage
-     */
-    loadFromStorage() {
+    handleLinkSubmit(e) {
+        e.preventDefault();
+
+        const title = this.elements.linkTitle?.value.trim();
+        let url = this.elements.linkUrl?.value.trim();
+        const icon = this.elements.linkIcon?.value.trim();
+
+        if (!title || !url) {
+            this.showToast('لطفاً عنوان و آدرس را وارد کنید', 'error');
+            return;
+        }
+
+        // Add https:// if protocol is missing
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            url = 'https://' + url;
+        }
+
+        // Validate URL
         try {
-            const saved = localStorage.getItem('dastyar_data');
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                this.state = {
-                    notes: parsed.notes || [],
-                    dateNotes: parsed.dateNotes || {},
-                    quickLinks: parsed.quickLinks || [],
-                    settings: { ...this.state.settings, ...parsed.settings }
+            new URL(url);
+        } catch {
+            this.showToast('آدرس وارد شده معتبر نیست', 'error');
+            return;
+        }
+
+        const editId = this.elements.linkForm?.dataset.editId;
+
+        if (editId) {
+            // Edit existing link
+            const index = this.state.quickLinks.findIndex(l => l.id === editId);
+            if (index !== -1) {
+                this.state.quickLinks[index] = {
+                    ...this.state.quickLinks[index],
+                    title,
+                    url,
+                    icon: icon || null
                 };
             }
-        } catch (error) {
-            console.error('Error loading from storage:', error);
-            this.showToast('خطا در بارگذاری داده‌ها', 'error');
+        } else {
+            // Create new link
+            const newLink = {
+                id: this.generateId(),
+                title,
+                url,
+                icon: icon || null
+            };
+            this.state.quickLinks.push(newLink);
+        }
+
+        this.saveToStorage();
+        this.renderQuickLinks();
+        this.closeAllModals();
+        this.showToast('لینک با موفقیت ذخیره شد', 'success');
+    }
+
+    editLink(linkId) {
+        const link = this.state.quickLinks.find(l => l.id === linkId);
+        if (link) {
+            this.showLinkModal(link);
         }
     }
 
-    /**
-     * Utility - Generate Unique ID
-     */
-    generateId() {
-        return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    }
-
-    /**
-     * Utility - Normalize URL
-     */
-    normalizeUrl(url) {
-        if (!url.startsWith('http://') && !url.startsWith('https://')) {
-            return 'https://' + url;
+    deleteLink(linkId) {
+        if (confirm('آیا از حذف این لینک اطمینان دارید؟')) {
+            this.state.quickLinks = this.state.quickLinks.filter(l => l.id !== linkId);
+            this.saveToStorage();
+            this.renderQuickLinks();
+            this.showToast('لینک حذف شد', 'success');
         }
-        return url;
     }
 
-    /**
-     * ✅ NEW: Get Favicon URL
-     * Uses Google's favicon service as fallback
-     */
-    getFaviconUrl(url) {
+    renderQuickLinks() {
+        if (!this.elements.quickLinksContainer) return;
+
+        if (this.state.quickLinks.length === 0) {
+            this.elements.quickLinksContainer.innerHTML = '';
+            return;
+        }
+
+        const linksHtml = this.state.quickLinks.map(link => {
+            const iconHtml = this.getLinkIcon(link);
+            
+            return `
+                <div class="quick-link-item">
+                    <a href="${this.sanitizeHtml(link.url)}" target="_blank" rel="noopener noreferrer" class="quick-link">
+                        ${iconHtml}
+                        <span class="quick-link-title">${this.sanitizeHtml(link.title)}</span>
+                    </a>
+                    <div class="quick-link-actions">
+                        <button class="link-edit" data-id="${link.id}" title="ویرایش">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="link-delete" data-id="${link.id}" title="حذف">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        this.elements.quickLinksContainer.innerHTML = linksHtml;
+    }
+
+    getLinkIcon(link) {
+        if (link.icon) {
+            // Check if it's an emoji (single character or emoji sequence)
+            if (link.icon.length <= 2 || /\p{Emoji}/u.test(link.icon)) {
+                return `<span class="quick-link-icon emoji">${link.icon}</span>`;
+            }
+            // Check if it's a URL
+            if (link.icon.startsWith('http://') || link.icon.startsWith('https://')) {
+                return `<img src="${this.sanitizeHtml(link.icon)}" alt="" class="quick-link-icon" onerror="this.src='https://www.google.com/s2/favicons?domain=${this.sanitizeHtml(link.url)}&sz=64'">`;
+            }
+        }
+        
+        // Fallback: Use Google's favicon service with S2 endpoint
         try {
-            const domain = new URL(url).hostname;
-            return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+            const urlObj = new URL(link.url);
+            return `<img src="https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64" alt="" class="quick-link-icon">`;
         } catch {
-            return '🔗'; // Fallback emoji
+            return `<span class="quick-link-icon emoji">🔗</span>`;
         }
     }
 
-    /**
-     * Utility - Sanitize HTML (XSS Protection)
-     */
-    sanitizeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = String(text);
-        return div.innerHTML;
-    }
+    // ============================================
+    // CALENDAR FUNCTIONALITY
+    // ============================================
 
-    /**
-     * ✅ IMPROVED: Escape JSON for Safe HTML Attributes
-     */
-    escapeJson(obj) {
-        return JSON.stringify(obj)
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-    }
+    renderCalendar() {
+        if (!this.elements.calendarGrid || !this.elements.currentMonthYear) return;
 
-    /**
-     * Utility - Format DateTime in Persian
-     */
-    formatDateTime(isoString) {
-        try {
-            const date = new Date(isoString);
-            return new Intl.DateTimeFormat('fa-IR', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            }).format(date);
-        } catch {
-            return 'تاریخ نامعتبر';
+        const isJalali = this.state.currentCalendarType === 'jalali';
+        
+        if (isJalali && typeof window.JalaliDate === 'undefined') {
+            this.showToast('کتابخانه تقویم شمسی بارگذاری نشده است', 'error');
+            return;
         }
+
+        if (isJalali) {
+            this.renderJalaliCalendar();
+        } else {
+            this.renderGregorianCalendar();
+        }
+
+        // Update calendar type label
+        if (this.elements.calendarTypeLabel) {
+            this.elements.calendarTypeLabel.textContent = isJalali ? 'شمسی' : 'میلادی';
+        }
+    }
+
+    renderGregorianCalendar() {
+        const year = this.state.currentDate.getFullYear();
+        const month = this.state.currentDate.getMonth();
+        
+        // Month names
+        const monthNames = [
+            'ژانویه', 'فوریه', 'مارس', 'آوریل', 'مه', 'ژوئن',
+            'ژوئیه', 'اوت', 'سپتامبر', 'اکتبر', 'نوامبر', 'دسامبر'
+        ];
+
+        this.elements.currentMonthYear.textContent = `${monthNames[month]} ${year}`;
+
+        // Get first day of month and number of days
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+        let calendarHtml = '';
+        let dayCount = 1;
+        let nextMonthDay = 1;
+
+        // 6 weeks x 7 days = 42 cells
+        for (let i = 0; i < 42; i++) {
+            const dayOfWeek = i % 7;
+            
+            if (i < firstDay) {
+                // Previous month days
+                const day = daysInPrevMonth - firstDay + i + 1;
+                const prevMonth = month === 0 ? 11 : month - 1;
+                const prevYear = month === 0 ? year - 1 : year;
+                const dateKey = this.formatDateKey(new Date(prevYear, prevMonth, day));
+                const hasNotes = this.state.dateNotes[dateKey] && this.state.dateNotes[dateKey].length > 0;
+                
+                calendarHtml += `
+                    <div class="calendar-day other-month ${hasNotes ? 'has-notes' : ''}" data-date="${dateKey}">
+                        ${day}
+                    </div>
+                `;
+            } else if (dayCount <= daysInMonth) {
+                // Current month days
+                const dateKey = this.formatDateKey(new Date(year, month, dayCount));
+                const isToday = this.isToday(new Date(year, month, dayCount));
+                const hasNotes = this.state.dateNotes[dateKey] && this.state.dateNotes[dateKey].length > 0;
+                
+                calendarHtml += `
+                    <div class="calendar-day ${isToday ? 'today' : ''} ${hasNotes ? 'has-notes' : ''}" data-date="${dateKey}">
+                        ${dayCount}
+                    </div>
+                `;
+                dayCount++;
+            } else {
+                // Next month days
+                const nextMonth = month === 11 ? 0 : month + 1;
+                const nextYear = month === 11 ? year + 1 : year;
+                const dateKey = this.formatDateKey(new Date(nextYear, nextMonth, nextMonthDay));
+                const hasNotes = this.state.dateNotes[dateKey] && this.state.dateNotes[dateKey].length > 0;
+                
+                calendarHtml += `
+                    <div class="calendar-day other-month ${hasNotes ? 'has-notes' : ''}" data-date="${dateKey}">
+                        ${nextMonthDay}
+                    </div>
+                `;
+                nextMonthDay++;
+            }
+        }
+
+        this.elements.calendarGrid.innerHTML = calendarHtml;
+    }
+
+    renderJalaliCalendar() {
+        if (typeof window.JalaliDate === 'undefined') return;
+
+        const jDate = this.toJalali(this.state.currentDate);
+        const year = jDate.year;
+        const month = jDate.month;
+
+        const monthNames = [
+            'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+            'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
+        ];
+
+        this.elements.currentMonthYear.textContent = `${monthNames[month - 1]} ${year}`;
+
+        // Get first day of month (0 = Saturday in Jalali)
+        const firstDayGregorian = window.JalaliDate.jalaliToGregorian(year, month, 1);
+        const firstDayDate = new Date(firstDayGregorian.gy, firstDayGregorian.gm - 1, firstDayGregorian.gd);
+        const firstDay = (firstDayDate.getDay() + 1) % 7; // Convert to Jalali week (Sat = 0)
+
+        // Days in current Jalali month
+        const daysInMonth = month <= 6 ? 31 : (month <= 11 ? 30 : (this.isJalaliLeapYear(year) ? 30 : 29));
+
+        // Days in previous Jalali month
+        const prevMonth = month === 1 ? 12 : month - 1;
+        const prevYear = month === 1 ? year - 1 : year;
+        const daysInPrevMonth = prevMonth <= 6 ? 31 : (prevMonth <= 11 ? 30 : (this.isJalaliLeapYear(prevYear) ? 30 : 29));
+
+        let calendarHtml = '';
+        let dayCount = 1;
+        let nextMonthDay = 1;
+
+        for (let i = 0; i < 42; i++) {
+            if (i < firstDay) {
+                // Previous month
+                const day = daysInPrevMonth - firstDay + i + 1;
+                const gDate = window.JalaliDate.jalaliToGregorian(prevYear, prevMonth, day);
+                const gregorianDate = new Date(gDate.gy, gDate.gm - 1, gDate.gd);
+                const dateKey = this.formatDateKey(gregorianDate);
+                const hasNotes = this.state.dateNotes[dateKey] && this.state.dateNotes[dateKey].length > 0;
+                
+                calendarHtml += `
+                    <div class="calendar-day other-month ${hasNotes ? 'has-notes' : ''}" data-date="${dateKey}">
+                        ${day}
+                    </div>
+                `;
+            } else if (dayCount <= daysInMonth) {
+                // Current month
+                const gDate = window.JalaliDate.jalaliToGregorian(year, month, dayCount);
+                const gregorianDate = new Date(gDate.gy, gDate.gm - 1, gDate.gd);
+                const dateKey = this.formatDateKey(gregorianDate);
+                const isToday = this.isToday(gregorianDate);
+                const hasNotes = this.state.dateNotes[dateKey] && this.state.dateNotes[dateKey].length > 0;
+                
+                calendarHtml += `
+                    <div class="calendar-day ${isToday ? 'today' : ''} ${hasNotes ? 'has-notes' : ''}" data-date="${dateKey}">
+                        ${dayCount}
+                    </div>
+                `;
+                dayCount++;
+            } else {
+                // Next month
+                const nextMonth = month === 12 ? 1 : month + 1;
+                const nextYear = month === 12 ? year + 1 : year;
+                const gDate = window.JalaliDate.jalaliToGregorian(nextYear, nextMonth, nextMonthDay);
+                const gregorianDate = new Date(gDate.gy, gDate.gm - 1, gDate.gd);
+                const dateKey = this.formatDateKey(gregorianDate);
+                const hasNotes = this.state.dateNotes[dateKey] && this.state.dateNotes[dateKey].length > 0;
+                
+                calendarHtml += `
+                    <div class="calendar-day other-month ${hasNotes ? 'has-notes' : ''}" data-date="${dateKey}">
+                        ${nextMonthDay}
+                    </div>
+                `;
+                nextMonthDay++;
+            }
+        }
+
+        this.elements.calendarGrid.innerHTML = calendarHtml;
+    }
+
+    navigateMonth(direction) {
+        if (this.state.currentCalendarType === 'jalali' && typeof window.JalaliDate !== 'undefined') {
+            const jDate = this.toJalali(this.state.currentDate);
+            let newMonth = jDate.month + direction;
+            let newYear = jDate.year;
+
+            if (newMonth < 1) {
+                newMonth = 12;
+                newYear--;
+            } else if (newMonth > 12) {
+                newMonth = 1;
+                newYear++;
+            }
+
+            const gDate = window.JalaliDate.jalaliToGregorian(newYear, newMonth, 1);
+            this.state.currentDate = new Date(gDate.gy, gDate.gm - 1, gDate.gd);
+        } else {
+            this.state.currentDate = new Date(
+                this.state.currentDate.getFullYear(),
+                this.state.currentDate.getMonth() + direction,
+                1
+            );
+        }
+
+        this.renderCalendar();
+    }
+
+    goToToday() {
+        this.state.currentDate = new Date();
+        this.renderCalendar();
+    }
+
+    // ============================================
+    // DATE NOTES FUNCTIONALITY
+    // ============================================
+
+    showDateNoteModal(dateKey) {
+        if (!this.elements.dateNoteModal) return;
+
+        this.elements.dateNoteModal.dataset.currentDate = dateKey;
+        
+        const date = new Date(dateKey);
+        const formattedDate = this.formatDate(date, true);
+        
+        const modalTitle = this.elements.dateNoteModal.querySelector('.date-note-modal-title');
+        if (modalTitle) {
+            modalTitle.textContent = `یادداشت‌های ${formattedDate}`;
+        }
+
+        this.renderDateNotes(dateKey);
+        this.elements.dateNoteModal.classList.add('active');
+    }
+
+    addDateNote(dateKey, title, content) {
+        if (!this.state.dateNotes[dateKey]) {
+            this.state.dateNotes[dateKey] = [];
+        }
+
+        const newNote = {
+            id: this.generateId(),
+            title,
+            content,
+            createdAt: new Date().toISOString()
+        };
+
+        this.state.dateNotes[dateKey].push(newNote);
+        this.saveToStorage();
+        this.renderCalendar(); // Update calendar to show note indicator
+        this.notifyCalendarUpdate(); // Notify calendar component
+        this.showToast('یادداشت تاریخ با موفقیت اضافه شد', 'success');
+    }
+
+    deleteDateNote(dateKey, noteId) {
+        if (confirm('آیا از حذف این یادداشت اطمینان دارید؟')) {
+            if (this.state.dateNotes[dateKey]) {
+                this.state.dateNotes[dateKey] = this.state.dateNotes[dateKey].filter(n => n.id !== noteId);
+                
+                if (this.state.dateNotes[dateKey].length === 0) {
+                    delete this.state.dateNotes[dateKey];
+                }
+                
+                this.saveToStorage();
+                this.renderDateNotes(dateKey);
+                this.renderCalendar();
+                this.notifyCalendarUpdate();
+                this.showToast('یادداشت حذف شد', 'success');
+            }
+        }
+    }
+
+    renderDateNotes(dateKey) {
+        if (!this.elements.dateNotesList) return;
+
+        const notes = this.state.dateNotes[dateKey] || [];
+
+        if (notes.length === 0) {
+            this.elements.dateNotesList.innerHTML = `
+                <div class="empty-state">
+                    <p>هنوز یادداشتی برای این روز ندارید</p>
+                </div>
+            `;
+            return;
+        }
+
+        const notesHtml = notes.map(note => `
+            <div class="date-note-item">
+                <div class="date-note-header">
+                    <h4>${this.sanitizeHtml(note.title)}</h4>
+                    <button class="date-note-delete" data-id="${note.id}" title="حذف">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <p class="date-note-content">${this.sanitizeHtml(note.content)}</p>
+            </div>
+        `).join('');
+
+        this.elements.dateNotesList.innerHTML = notesHtml;
+    }
+
+    /**
+     * Notify other components about calendar updates (decoupled integration)
+     */
+    notifyCalendarUpdate() {
+        const event = new CustomEvent('calendarUpdate', {
+            detail: { dateNotes: this.state.dateNotes }
+        });
+        document.dispatchEvent(event);
+    }
+
+    // ============================================
+    // UTILITY METHODS
+    // ============================================
+
+    updateDateTime() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('fa-IR', { 
+            hour: '2-digit', 
+            minute: '2-digit'
+        });
+        
+        document.querySelectorAll('.current-time').forEach(el => {
+            el.textContent = timeString;
+        });
+    }
+
+    formatDate(date, longFormat = false) {
+        if (this.state.currentCalendarType === 'jalali' && typeof window.JalaliDate !== 'undefined') {
+            const jDate = this.toJalali(date);
+            const monthNames = [
+                'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+                'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
+            ];
+            
+            if (longFormat) {
+                return `${jDate.day} ${monthNames[jDate.month - 1]} ${jDate.year}`;
+            }
+            return `${jDate.year}/${jDate.month}/${jDate.day}`;
+        }
+        
+        if (longFormat) {
+            return date.toLocaleDateString('fa-IR', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        }
+        return date.toLocaleDateString('fa-IR');
+    }
+
+    formatDateKey(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}${month}-${day}`;
+    }
+
+    isToday(date) {
+        const today = new Date();
+        return date.getDate() === today.getDate() &&
+               date.getMonth() === today.getMonth() &&
+               date.getFullYear() === today.getFullYear();
     }
 }
 
-// Initialize App
-let app;
+// ============================================
+// INITIALIZE APPLICATION
+// ============================================
 document.addEventListener('DOMContentLoaded', () => {
-    app = new DastyarApp();
-    console.log('✅ Dastyar App Initialized Successfully');
+    window.app = new DastyarApp();
 });
