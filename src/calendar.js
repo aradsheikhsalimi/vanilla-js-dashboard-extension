@@ -1,946 +1,546 @@
 /**
- * Dastyar Calendar Module - Production Grade (FINAL VERSION)
- * Supports both Gregorian and Jalali (Persian) calendars
- * All critical issues resolved + Event Delegation implemented
+ * ============================================
+ * CALENDAR MODULE - PRODUCTION READY VERSION
+ * ============================================
+ * 
+ * Features:
+ * - Dual Calendar Support (Gregorian & Jalali)
+ * - Event Delegation for Performance
+ * - Accessibility Support (ARIA, Keyboard Navigation)
+ * - Clean Separation of Concerns
+ * - Consistent Date Key Generation (Always Gregorian)
+ * 
+ * Dependencies:
+ * - window.JalaliDate from jalali.js (REQUIRED for Jalali mode)
+ * - window.app from app.js (for state management)
+ * 
+ * @version 2.0.0
+ * @author Dastyar Team
  */
 
-// ============================================
-// JALALI (PERSIAN) CALENDAR UTILITIES
-// ============================================
-
-class JalaliCalendar {
-    /**
-     * Convert Gregorian date to Jalali
-     * @param {number} gy - Gregorian year
-     * @param {number} gm - Gregorian month (1-12)
-     * @param {number} gd - Gregorian day
-     * @returns {Object} {jy, jm, jd}
-     */
-    static gregorianToJalali(gy, gm, gd) {
-        const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
-        
-        let jy = (gy <= 1600) ? 0 : 979;
-        gy -= (gy <= 1600) ? 621 : 1600;
-        
-        let gy2 = (gm > 2) ? (gy + 1) : gy;
-        let days = (365 * gy) + (Math.floor((gy2 + 3) / 4)) - (Math.floor((gy2 + 99) / 100)) + 
-                   (Math.floor((gy2 + 399) / 400)) - 80 + gd + g_d_m[gm - 1];
-        
-        jy += 33 * Math.floor(days / 12053);
-        days %= 12053;
-        
-        jy += 4 * Math.floor(days / 1461);
-        days %= 1461;
-        
-        if (days > 365) {
-            jy += Math.floor((days - 1) / 365);
-            days = (days - 1) % 365;
-        }
-        
-        let jm, jd;
-        if (days < 186) {
-            jm = 1 + Math.floor(days / 31);
-            jd = 1 + (days % 31);
-        } else {
-            jm = 7 + Math.floor((days - 186) / 30);
-            jd = 1 + ((days - 186) % 30);
-        }
-        
-        return { jy, jm, jd };
-    }
-
-    /**
-     * Convert Jalali date to Gregorian
-     * @param {number} jy - Jalali year
-     * @param {number} jm - Jalali month (1-12)
-     * @param {number} jd - Jalali day
-     * @returns {Object} {gy, gm, gd}
-     */
-    static jalaliToGregorian(jy, jm, jd) {
-        let gy = (jy <= 979) ? 621 : 1600;
-        jy -= (jy <= 979) ? 0 : 979;
-        
-        let days = (365 * jy) + (Math.floor(jy / 33) * 8) + 
-                   Math.floor(((jy % 33) + 3) / 4) + 78 + jd;
-        
-        if (jm < 7) {
-            days += (jm - 1) * 31;
-        } else {
-            days += ((jm - 7) * 30) + 186;
-        }
-        
-        gy += 400 * Math.floor(days / 146097);
-        days %= 146097;
-        
-        if (days > 36524) {
-            gy += 100 * Math.floor(--days / 36524);
-            days %= 36524;
-            if (days >= 365) days++;
-        }
-        
-        gy += 4 * Math.floor(days / 1461);
-        days %= 1461;
-        
-        if (days > 365) {
-            gy += Math.floor((days - 1) / 365);
-            days = (days - 1) % 365;
-        }
-        
-        const sal_a = [0, 31, (this.isGregorianLeapYear(gy) ? 29 : 28), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-        let gm = 0;
-        
-        for (gm = 0; gm < 13 && days >= sal_a[gm]; gm++) {
-            days -= sal_a[gm];
-        }
-        
-        const gd = days + 1;
-        
-        return { gy, gm, gd };
-    }
-
-    /**
-     * Check if Jalali year is leap
-     */
-    static isJalaliLeapYear(year) {
-        const breaks = [1, 5, 9, 13, 17, 22, 26, 30];
-        const cycle = 2820;
-        let aux = year + 38 - 474;
-        let modulo = aux % cycle;
-        modulo = modulo < 0 ? modulo + cycle : modulo;
-        
-        const gy = 474 + modulo;
-        const leapIndex = ((gy + 38 + 31) % 128) % 33;
-        
-        return breaks.includes(leapIndex);
-    }
-
-    /**
-     * Check if Gregorian year is leap
-     */
-    static isGregorianLeapYear(year) {
-        return ((year % 4 === 0) && (year % 100 !== 0)) || (year % 400 === 0);
-    }
-
-    /**
-     * Get number of days in Jalali month
-     */
-    static getDaysInJalaliMonth(year, month) {
-        if (month <= 6) return 31;
-        if (month <= 11) return 30;
-        return this.isJalaliLeapYear(year) ? 30 : 29;
-    }
-
-    /**
-     * Get Jalali month names
-     */
-    static getMonthNames() {
-        return [
-            'فروردین', 'اردیبهشت', 'خرداد',
-            'تیر', 'مرداد', 'شهریور',
-            'مهر', 'آبان', 'آذر',
-            'دی', 'بهمن', 'اسفند'
-        ];
-    }
-
-    /**
-     * Get Jalali weekday names (Saturday first)
-     */
-    static getWeekdayNames() {
-        return ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
-    }
-
-    /**
-     * Get day of week for Jalali date (0 = Saturday)
-     */
-    static getJalaliDayOfWeek(jy, jm, jd) {
-        const greg = this.jalaliToGregorian(jy, jm, jd);
-        const date = new Date(greg.gy, greg.gm - 1, greg.gd);
-        const dayOfWeek = date.getDay();
-        return (dayOfWeek + 1) % 7;
-    }
-}
-
-// ============================================
-// GREGORIAN CALENDAR UTILITIES
-// ============================================
-
-class GregorianCalendar {
-    /**
-     * Get Gregorian month names
-     */
-    static getMonthNames() {
-        return [
-            'January', 'February', 'March', 'April',
-            'May', 'June', 'July', 'August',
-            'September', 'October', 'November', 'December'
-        ];
-    }
-
-    /**
-     * Get Gregorian weekday names (Saturday first for consistency)
-     */
-    static getWeekdayNames() {
-        return ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-    }
-
-    /**
-     * Check if Gregorian year is leap
-     */
-    static isLeapYear(year) {
-        return ((year % 4 === 0) && (year % 100 !== 0)) || (year % 400 === 0);
-    }
-
-    /**
-     * Get number of days in Gregorian month
-     */
-    static getDaysInMonth(year, month) {
-        const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-        if (month === 2 && this.isLeapYear(year)) {
-            return 29;
-        }
-        return daysInMonth[month - 1];
-    }
-
-    /**
-     * Get day of week for Gregorian date (0 = Saturday)
-     */
-    static getDayOfWeek(year, month, day) {
-        const date = new Date(year, month - 1, day);
-        const dayOfWeek = date.getDay();
-        return (dayOfWeek + 1) % 7;
-    }
-}
-
-// ============================================
-// MAIN CALENDAR CLASS
-// ============================================
-
 class Calendar {
-    constructor(options = {}) {
-        // Configuration
-        this.type = options.type || 'gregorian';
-        this.container = options.container || document.getElementById('calendarWidget');
+    /**
+     * Initialize Calendar with default state
+     */
+    constructor() {
+        // Calendar State
+        this.currentDate = new Date();
+        this.currentType = 'gregorian'; // 'gregorian' | 'jalali'
         
-        // Callbacks
-        this.onDateSelect = options.onDateSelect || null;
-
-        // Current date state
-        this.today = new Date();
-        this.currentYear = this.today.getFullYear();
-        this.currentMonth = this.today.getMonth() + 1;
-        this.selectedDate = null;
-
-        // Jalali current date
-        const jalaliToday = JalaliCalendar.gregorianToJalali(
-            this.today.getFullYear(),
-            this.today.getMonth() + 1,
-            this.today.getDate()
-        );
-        this.jalaliYear = jalaliToday.jy;
-        this.jalaliMonth = jalaliToday.jm;
-
+        // Month Names (Localized)
+        this.gregorianMonths = [
+            'ژانویه', 'فوریه', 'مارس', 'آوریل', 'می', 'ژوئن',
+            'ژوئیه', 'آگوست', 'سپتامبر', 'اکتبر', 'نوامبر', 'دسامبر'
+        ];
+        
+        this.jalaliMonths = [
+            'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+            'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
+        ];
+        
+        // Weekday Names (Saturday-based for Persian locale)
+        this.weekdays = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
+        
+        // Cache DOM Elements
+        this.elements = this.cacheElements();
+        
         // Initialize
         this.init();
     }
 
     /**
-     * Initialize Calendar
+     * Cache all required DOM elements
+     * @returns {Object} Cached elements
+     */
+    cacheElements() {
+        return {
+            calendarWidget: document.querySelector('.calendar-widget'),
+            calendarDays: document.querySelector('.calendar-days'),
+            currentMonth: document.querySelector('.current-month'),
+            currentYear: document.querySelector('.current-year'),
+            prevBtn: document.querySelector('.prev-month'),
+            nextBtn: document.querySelector('.next-month'),
+            todayBtn: document.querySelector('.today-btn'),
+            toggleBtns: document.querySelectorAll('.toggle-btn')
+        };
+    }
+
+    /**
+     * Initialize calendar with event listeners and render
      */
     init() {
+        if (!this.elements.calendarWidget) {
+            console.warn('Calendar widget not found in DOM');
+            return;
+        }
+
         this.setupEventListeners();
         this.render();
-        this.setupGlobalListeners();
+        this.setupAccessibility();
+        
+        console.log('✅ Calendar initialized successfully');
     }
 
     /**
-     * Setup Global Event Listeners (from app.js)
-     */
-    setupGlobalListeners() {
-        // Listen for date notes changes from app.js
-        document.addEventListener('dateNotesChanged', () => {
-            this.updateDateIndicators();
-        });
-
-        // Listen for calendar type change
-        document.addEventListener('calendarTypeChanged', (e) => {
-            if (e.detail && e.detail.type) {
-                this.setType(e.detail.type);
-            }
-        });
-    }
-
-    /**
-     * Setup Event Listeners
+     * Setup all event listeners using Event Delegation
      */
     setupEventListeners() {
-        if (!this.container) {
-            console.error('Calendar container not found');
+        // Navigation Buttons
+        this.elements.prevBtn?.addEventListener('click', () => this.navigateMonth(-1));
+        this.elements.nextBtn?.addEventListener('click', () => this.navigateMonth(1));
+        this.elements.todayBtn?.addEventListener('click', () => this.goToToday());
+
+        // Calendar Type Toggle
+        this.elements.toggleBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => this.handleTypeToggle(e));
+        });
+
+        // Day Click Handler (Event Delegation)
+        this.attachDayClickListeners();
+
+        // Listen to note updates from app.js
+        window.addEventListener('notesUpdated', () => this.render());
+    }
+
+    /**
+     * Attach day click listeners using Event Delegation
+     * This prevents creating 42 individual listeners
+     */
+    attachDayClickListeners() {
+        if (!this.elements.calendarDays) return;
+
+        this.elements.calendarDays.addEventListener('click', (e) => {
+            const dayCell = e.target.closest('.day-cell');
+            if (!dayCell || dayCell.classList.contains('other-month')) return;
+
+            const dateKey = dayCell.dataset.date;
+            if (dateKey && window.app) {
+                window.app.showDateNoteModal(dateKey);
+            }
+        });
+    }
+
+    /**
+     * Setup keyboard accessibility for calendar navigation
+     */
+    setupAccessibility() {
+        if (!this.elements.calendarDays) return;
+
+        this.elements.calendarDays.addEventListener('keydown', (e) => {
+            const dayCell = e.target.closest('.day-cell');
+            if (!dayCell) return;
+
+            // Enter or Space to select date
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                dayCell.click();
+            }
+
+            // Arrow key navigation
+            const days = Array.from(this.elements.calendarDays.querySelectorAll('.day-cell:not(.other-month)'));
+            const currentIndex = days.indexOf(dayCell);
+
+            let targetIndex = currentIndex;
+
+            switch(e.key) {
+                case 'ArrowLeft':
+                    targetIndex = currentIndex + 1; // RTL: left = next
+                    break;
+                case 'ArrowRight':
+                    targetIndex = currentIndex - 1; // RTL: right = previous
+                    break;
+                case 'ArrowUp':
+                    targetIndex = currentIndex - 7;
+                    break;
+                case 'ArrowDown':
+                    targetIndex = currentIndex + 7;
+                    break;
+                default:
+                    return;
+            }
+
+            if (days[targetIndex]) {
+                e.preventDefault();
+                days[targetIndex].focus();
+            }
+        });
+    }
+
+    /**
+     * Handle calendar type toggle (Gregorian/Jalali)
+     * @param {Event} e - Click event
+     */
+    handleTypeToggle(e) {
+        const type = e.target.dataset.type;
+        
+        // Validate Jalali dependency
+        if (type === 'jalali' && !window.JalaliDate) {
+            console.error('❌ JalaliDate library not loaded. Cannot switch to Jalali calendar.');
+            if (window.app) {
+                window.app.showToast('کتابخانه تقویم شمسی بارگذاری نشده است', 'error');
+            }
             return;
         }
 
-        // Calendar type toggle
-        const toggleBtns = this.container.querySelectorAll('.toggle-btn');
-        toggleBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const type = btn.dataset.type;
-                if (type) this.setType(type);
+        if (type !== this.currentType) {
+            this.currentType = type;
+            
+            // Update active state
+            this.elements.toggleBtns.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.type === type);
             });
-        });
-    }
 
-    /**
-     * Set Calendar Type
-     */
-    setType(type) {
-        if (type !== 'gregorian' && type !== 'jalali') {
-            console.error('Invalid calendar type');
-            return;
+            this.render();
         }
-
-        this.type = type;
-
-        // Update toggle buttons
-        const toggleBtns = this.container.querySelectorAll('.toggle-btn');
-        toggleBtns.forEach(btn => {
-            if (btn.dataset.type === type) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        });
-
-        this.render();
     }
 
     /**
-     * Navigate to Previous Month
+     * Navigate to previous/next month
+     * @param {number} direction - -1 for previous, 1 for next
      */
-    previousMonth() {
-        if (this.type === 'gregorian') {
-            this.currentMonth--;
-            if (this.currentMonth < 1) {
-                this.currentMonth = 12;
-                this.currentYear--;
-            }
+    navigateMonth(direction) {
+        if (this.currentType === 'gregorian') {
+            this.currentDate.setMonth(this.currentDate.getMonth() + direction);
         } else {
-            this.jalaliMonth--;
-            if (this.jalaliMonth < 1) {
-                this.jalaliMonth = 12;
-                this.jalaliYear--;
+            const jalali = this.gregorianToJalali(this.currentDate);
+            let newMonth = jalali.month + direction;
+            let newYear = jalali.year;
+
+            if (newMonth > 12) {
+                newMonth = 1;
+                newYear++;
+            } else if (newMonth < 1) {
+                newMonth = 12;
+                newYear--;
             }
+
+            this.currentDate = this.jalaliToGregorian({ year: newYear, month: newMonth, day: 1 });
         }
+
         this.render();
     }
 
     /**
-     * Navigate to Next Month
-     */
-    nextMonth() {
-        if (this.type === 'gregorian') {
-            this.currentMonth++;
-            if (this.currentMonth > 12) {
-                this.currentMonth = 1;
-                this.currentYear++;
-            }
-        } else {
-            this.jalaliMonth++;
-            if (this.jalaliMonth > 12) {
-                this.jalaliMonth = 1;
-                this.jalaliYear++;
-            }
-        }
-        this.render();
-    }
-
-    /**
-     * Go to Today
+     * Go to today's date
      */
     goToToday() {
-        this.currentYear = this.today.getFullYear();
-        this.currentMonth = this.today.getMonth() + 1;
-
-        const jalaliToday = JalaliCalendar.gregorianToJalali(
-            this.today.getFullYear(),
-            this.today.getMonth() + 1,
-            this.today.getDate()
-        );
-        this.jalaliYear = jalaliToday.jy;
-        this.jalaliMonth = jalaliToday.jm;
-
+        this.currentDate = new Date();
         this.render();
     }
 
     /**
-     * Handle Date Selection
-     * FIXED: Removed setTimeout anti-pattern, direct synchronous call
-     */
-    selectDate(year, month, day, isOtherMonth = false) {
-        // UX IMPROVEMENT: Navigate to other month if clicked
-        if (isOtherMonth) {
-            if (this.type === 'gregorian') {
-                if (month < this.currentMonth || (month === 12 && this.currentMonth === 1)) {
-                    this.previousMonth();
-                } else {
-                    this.nextMonth();
-                }
-            } else {
-                if (month < this.jalaliMonth || (month === 12 && this.jalaliMonth === 1)) {
-                    this.previousMonth();
-                } else {
-                    this.nextMonth();
-                }
-            }
-            
-            // FIXED: Direct call instead of setTimeout (synchronous render)
-            this.selectDate(year, month, day, false);
-            return;
-        }
-
-        // Convert to Gregorian for storage consistency
-        let dateKey;
-        if (this.type === 'jalali') {
-            const greg = JalaliCalendar.jalaliToGregorian(year, month, day);
-            dateKey = this.formatDateString(greg.gy, greg.gm, greg.gd);
-        } else {
-            dateKey = this.formatDateString(year, month, day);
-        }
-
-        this.selectedDate = dateKey;
-
-        // Callback to app.js
-        if (this.onDateSelect && typeof this.onDateSelect === 'function') {
-            this.onDateSelect(dateKey);
-        }
-
-        // Visual update
-        this.updateSelectedDay(dateKey);
-    }
-
-    /**
-     * Update Selected Day Visual
-     */
-    updateSelectedDay(dateKey) {
-        const dayCells = this.container.querySelectorAll('.day-cell');
-        dayCells.forEach(cell => {
-            if (cell.dataset.date === dateKey) {
-                cell.classList.add('selected');
-            } else {
-                cell.classList.remove('selected');
-            }
-        });
-    }
-
-    /**
-     * Update Date Indicators (show notes)
-     * FIXED: Direct access to app.state instead of non-existent hasNotesForDate method
-     */
-    updateDateIndicators() {
-        const dayCells = this.container.querySelectorAll('.day-cell');
-        dayCells.forEach(cell => {
-            const dateKey = cell.dataset.date;
-            if (dateKey) {
-                const hasNotes = this.hasNotesForDate(dateKey);
-                if (hasNotes) {
-                    cell.classList.add('has-note');
-                } else {
-                    cell.classList.remove('has-note');
-                }
-            }
-        });
-    }
-
-    /**
-     * Check if date has notes
-     * FIXED: Proper integration with app.js state
-     */
-    hasNotesForDate(dateKey) {
-        if (window.app && window.app.state && window.app.state.dateNotes) {
-            const notes = window.app.state.dateNotes[dateKey];
-            return Array.isArray(notes) && notes.length > 0;
-        }
-        return false;
-    }
-
-    /**
-     * Format Date String (YYYY-MM-DD) - Always Gregorian for storage
-     */
-    formatDateString(year, month, day) {
-        const y = String(year).padStart(4, '0');
-        const m = String(month).padStart(2, '0');
-        const d = String(day).padStart(2, '0');
-        return `${y}-${m}-${d}`;
-    }
-
-    /**
-     * Check if date is today
-     */
-    isToday(year, month, day) {
-        if (this.type === 'gregorian') {
-            return (
-                year === this.today.getFullYear() &&
-                month === this.today.getMonth() + 1 &&
-                day === this.today.getDate()
-            );
-        } else {
-            const jalaliToday = JalaliCalendar.gregorianToJalali(
-                this.today.getFullYear(),
-                this.today.getMonth() + 1,
-                this.today.getDate()
-            );
-            return (
-                year === jalaliToday.jy &&
-                month === jalaliToday.jm &&
-                day === jalaliToday.jd
-            );
-        }
-    }
-
-    /**
-     * Check if day is weekend (Friday in Jalali, Saturday/Sunday in Gregorian)
-     */
-    isWeekend(year, month, day) {
-        if (this.type === 'jalali') {
-            const dayOfWeek = JalaliCalendar.getJalaliDayOfWeek(year, month, day);
-            return dayOfWeek === 6; // Friday
-        } else {
-            const dayOfWeek = GregorianCalendar.getDayOfWeek(year, month, day);
-            return dayOfWeek === 0 || dayOfWeek === 6; // Saturday or Friday
-        }
-    }
-
-    /**
-     * Render Calendar
+     * Main render method - delegates to specific calendar renderer
      */
     render() {
-        if (!this.container) return;
-
-        const calendarWidget = this.container.querySelector('.calendar-widget');
-        if (!calendarWidget) {
-            console.error('Calendar widget not found');
-            return;
-        }
-
-        let html;
-        if (this.type === 'gregorian') {
-            html = this.renderGregorianCalendar();
+        if (this.currentType === 'gregorian') {
+            this.renderGregorianCalendar();
         } else {
-            html = this.renderJalaliCalendar();
+            this.renderJalaliCalendar();
         }
-
-        calendarWidget.innerHTML = html;
-
-        // Re-attach event listeners
-        this.attachNavigationListeners();
-        this.attachDayClickListeners();
-        this.updateDateIndicators();
-
-        // Add ARIA attributes for accessibility
-        this.setupAccessibility();
     }
 
     /**
      * Render Gregorian Calendar
      */
     renderGregorianCalendar() {
-        const monthNames = GregorianCalendar.getMonthNames();
-        const weekdayNames = GregorianCalendar.getWeekdayNames();
-        const daysInMonth = GregorianCalendar.getDaysInMonth(this.currentYear, this.currentMonth);
-        const firstDayOfWeek = GregorianCalendar.getDayOfWeek(this.currentYear, this.currentMonth, 1);
+        const year = this.currentDate.getFullYear();
+        const month = this.currentDate.getMonth();
 
-        // Navigation
-        const navHtml = `
-            <div class="calendar-nav">
-                <button class="nav-btn" id="prevMonthBtn" aria-label="Previous Month">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="15 18 9 12 15 6"></polyline>
-                    </svg>
-                </button>
-                <div class="calendar-current">
-                    <div class="current-month">${monthNames[this.currentMonth - 1]}</div>
-                    <div class="current-year">${this.currentYear}</div>
-                </div>
-                <button class="nav-btn" id="nextMonthBtn" aria-label="Next Month">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
-                </button>
-            </div>
-        `;
+        // Update header
+        if (this.elements.currentMonth) {
+            this.elements.currentMonth.textContent = this.gregorianMonths[month];
+        }
+        if (this.elements.currentYear) {
+            this.elements.currentYear.textContent = year;
+        }
 
-        // Weekday headers
-        const weekdaysHtml = `
-            <div class="calendar-weekdays">
-                ${weekdayNames.map(day => `<div class="weekday">${day}</div>`).join('')}
-            </div>
-        `;
+        // Calculate first day of month (0 = Sunday)
+        const firstDay = new Date(year, month, 1).getDay();
+        // Adjust for Saturday-based week (Persian locale)
+        const adjustedFirstDay = (firstDay + 1) % 7;
 
-        // Days grid
-        const days = [];
+        // Days in current and previous month
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const daysInPrevMonth = new Date(year, month, 0).getDate();
 
-        // Previous month days
-        const prevMonthDays = GregorianCalendar.getDaysInMonth(
-            this.currentMonth === 1 ? this.currentYear - 1 : this.currentYear,
-            this.currentMonth === 1 ? 12 : this.currentMonth - 1
-        );
-        
-        for (let i = firstDayOfWeek - 1; i >= 0; i--) {
-            const day = prevMonthDays - i;
-            const prevMonth = this.currentMonth === 1 ? 12 : this.currentMonth - 1;
-            const prevYear = this.currentMonth === 1 ? this.currentYear - 1 : this.currentYear;
-            days.push({
-                day,
-                month: prevMonth,
-                year: prevYear,
-                isOtherMonth: true,
-                isToday: false,
-                isWeekend: false
-            });
+        // Today reference
+        const today = new Date();
+        const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+
+        let html = '';
+
+        // Previous month days (grayed out)
+        for (let i = adjustedFirstDay - 1; i >= 0; i--) {
+            const day = daysInPrevMonth - i;
+            const prevMonth = month === 0 ? 11 : month - 1;
+            const prevYear = month === 0 ? year - 1 : year;
+            const dateStr = this.formatDateKey(prevYear, prevMonth + 1, day);
+            
+            html += this.renderDayCell(day, dateStr, true, false, false);
         }
 
         // Current month days
         for (let day = 1; day <= daysInMonth; day++) {
-            days.push({
-                day,
-                month: this.currentMonth,
-                year: this.currentYear,
-                isOtherMonth: false,
-                isToday: this.isToday(this.currentYear, this.currentMonth, day),
-                isWeekend: this.isWeekend(this.currentYear, this.currentMonth, day)
-            });
+            const dateStr = this.formatDateKey(year, month + 1, day);
+            const isToday = isCurrentMonth && day === today.getDate();
+            const currentDayOfWeek = new Date(year, month, day).getDay();
+            const isWeekend = currentDayOfWeek === 5; // Friday
+
+            html += this.renderDayCell(day, dateStr, false, isToday, isWeekend);
         }
 
-        // Next month days
-        const remainingCells = 42 - days.length;
+        // Next month days (to fill grid)
+        const totalCells = adjustedFirstDay + daysInMonth;
+        const remainingCells = totalCells > 35 ? 42 - totalCells : 35 - totalCells;
+
         for (let day = 1; day <= remainingCells; day++) {
-            const nextMonth = this.currentMonth === 12 ? 1 : this.currentMonth + 1;
-            const nextYear = this.currentMonth === 12 ? this.currentYear + 1 : this.currentYear;
-            days.push({
-                day,
-                month: nextMonth,
-                year: nextYear,
-                isOtherMonth: true,
-                isToday: false,
-                isWeekend: false
-            });
+            const nextMonth = month === 11 ? 0 : month + 1;
+            const nextYear = month === 11 ? year + 1 : year;
+            const dateStr = this.formatDateKey(nextYear, nextMonth + 1, day);
+            
+            html += this.renderDayCell(day, dateStr, true, false, false);
         }
 
-        const daysHtml = `
-            <div class="calendar-days">
-                ${days.map(d => {
-                    const dateKey = this.formatDateString(d.year, d.month, d.day);
-                    const classes = [
-                        'day-cell',
-                        d.isOtherMonth ? 'other-month' : '',
-                        d.isToday ? 'today' : '',
-                        d.isWeekend ? 'weekend' : ''
-                    ].filter(Boolean).join(' ');
-
-                    return `
-                        <div class="${classes}" 
-                             data-date="${dateKey}"
-                             data-year="${d.year}"
-                             data-month="${d.month}"
-                             data-day="${d.day}"
-                             data-other="${d.isOtherMonth}"
-                             role="button"
-                             tabindex="${d.isOtherMonth ? -1 : 0}"
-                             aria-label="${d.day} ${monthNames[d.month - 1]} ${d.year}">
-                            <span class="day-number">${d.day}</span>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        `;
-
-        // Actions
-        const actionsHtml = `
-            <div class="calendar-actions">
-                <button class="action-btn" id="todayBtn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                        <line x1="16" y1="2" x2="16" y2="6"></line>
-                        <line x1="8" y1="2" x2="8" y2="6"></line>
-                        <line x1="3" y1="10" x2="21" y2="10"></line>
-                    </svg>
-                    Today
-                </button>
-            </div>
-        `;
-
-        return `
-            ${navHtml}
-            <div class="calendar-body">
-                ${weekdaysHtml}
-                ${daysHtml}
-            </div>
-            ${actionsHtml}
-        `;
+        if (this.elements.calendarDays) {
+            this.elements.calendarDays.innerHTML = html;
+        }
     }
 
     /**
      * Render Jalali Calendar
+     * ✅ FIXED: Uses Gregorian keys for consistency
      */
     renderJalaliCalendar() {
-        const monthNames = JalaliCalendar.getMonthNames();
-        const weekdayNames = JalaliCalendar.getWeekdayNames();
-        const daysInMonth = JalaliCalendar.getDaysInJalaliMonth(this.jalaliYear, this.jalaliMonth);
-        const firstDayOfWeek = JalaliCalendar.getJalaliDayOfWeek(this.jalaliYear, this.jalaliMonth, 1);
+        // Validate dependency
+        if (!window.JalaliDate) {
+            console.error('❌ Critical: JalaliDate not available');
+            this.showFallbackMessage();
+            return;
+        }
 
-        // Navigation
-        const navHtml = `
-            <div class="calendar-nav">
-                <button class="nav-btn" id="prevMonthBtn" aria-label="ماه قبل">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
-                </button>
-                <div class="calendar-current">
-                    <div class="current-month">${monthNames[this.jalaliMonth - 1]}</div>
-                    <div class="current-year">${this.jalaliYear}</div>
-                </div>
-                <button class="nav-btn" id="nextMonthBtn" aria-label="ماه بعد">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="15 18 9 12 15 6"></polyline>
-                    </svg>
-                </button>
-            </div>
-        `;
+        const jalali = this.gregorianToJalali(this.currentDate);
+        const { year, month } = jalali;
 
-        // Weekday headers
-        const weekdaysHtml = `
-            <div class="calendar-weekdays">
-                ${weekdayNames.map(day => `<div class="weekday">${day}</div>`).join('')}
-            </div>
-        `;
+        // Update header
+        if (this.elements.currentMonth) {
+            this.elements.currentMonth.textContent = this.jalaliMonths[month - 1];
+        }
+        if (this.elements.currentYear) {
+            this.elements.currentYear.textContent = year;
+        }
 
-        // Days grid
-        const days = [];
+        // Calculate first day of Jalali month in Gregorian calendar
+        const firstDayGregorian = this.jalaliToGregorian({ year, month, day: 1 });
+        const firstDay = firstDayGregorian.getDay();
+        const adjustedFirstDay = (firstDay + 1) % 7;
+
+        // Days in current Jalali month
+        const daysInMonth = this.jalaliMonthLength(year, month);
+        
+        // Previous Jalali month info
+        const prevMonth = month === 1 ? 12 : month - 1;
+        const prevYear = month === 1 ? year - 1 : year;
+        const daysInPrevMonth = this.jalaliMonthLength(prevYear, prevMonth);
+
+        // Today reference
+        const today = this.gregorianToJalali(new Date());
+        const isCurrentMonth = year === today.year && month === today.month;
+
+        let html = '';
 
         // Previous month days
-        const prevMonth = this.jalaliMonth === 1 ? 12 : this.jalaliMonth - 1;
-        const prevYear = this.jalaliMonth === 1 ? this.jalaliYear - 1 : this.jalaliYear;
-        const prevMonthDays = JalaliCalendar.getDaysInJalaliMonth(prevYear, prevMonth);
-        
-        for (let i = firstDayOfWeek - 1; i >= 0; i--) {
-            const day = prevMonthDays - i;
-            days.push({
-                day,
-                month: prevMonth,
-                year: prevYear,
-                isOtherMonth: true,
-                isToday: false,
-                isWeekend: false
-            });
+        for (let i = adjustedFirstDay - 1; i >= 0; i--) {
+            const day = daysInPrevMonth - i;
+            const dateGregorian = this.jalaliToGregorian({ year: prevYear, month: prevMonth, day });
+            
+            // ✅ CRITICAL FIX: Use Gregorian date for key generation
+            const dateStr = this.formatDateKey(
+                dateGregorian.getFullYear(),
+                dateGregorian.getMonth() + 1,
+                dateGregorian.getDate()
+            );
+            
+            html += this.renderDayCell(day, dateStr, true, false, false);
         }
 
         // Current month days
         for (let day = 1; day <= daysInMonth; day++) {
-            days.push({
-                day,
-                month: this.jalaliMonth,
-                year: this.jalaliYear,
-                isOtherMonth: false,
-                isToday: this.isToday(this.jalaliYear, this.jalaliMonth, day),
-                isWeekend: this.isWeekend(this.jalaliYear, this.jalaliMonth, day)
-            });
+            const dateGregorian = this.jalaliToGregorian({ year, month, day });
+            
+            // ✅ CRITICAL FIX: Use Gregorian date for key generation
+            const dateStr = this.formatDateKey(
+                dateGregorian.getFullYear(),
+                dateGregorian.getMonth() + 1,
+                dateGregorian.getDate()
+            );
+
+            const isToday = isCurrentMonth && day === today.day;
+            const isWeekend = dateGregorian.getDay() === 5; // Friday
+            
+            html += this.renderDayCell(day, dateStr, false, isToday, isWeekend);
         }
 
         // Next month days
-        const remainingCells = 42 - days.length;
-        const nextMonth = this.jalaliMonth === 12 ? 1 : this.jalaliMonth + 1;
-        const nextYear = this.jalaliMonth === 12 ? this.jalaliYear + 1 : this.jalaliYear;
-        
+        const nextMonth = month === 12 ? 1 : month + 1;
+        const nextYear = month === 12 ? year + 1 : year;
+        const totalCells = adjustedFirstDay + daysInMonth;
+        const remainingCells = totalCells > 35 ? 42 - totalCells : 35 - totalCells;
+
         for (let day = 1; day <= remainingCells; day++) {
-            days.push({
-                day,
-                month: nextMonth,
-                year: nextYear,
-                isOtherMonth: true,
-                isToday: false,
-                isWeekend: false
-            });
+            const dateGregorian = this.jalaliToGregorian({ year: nextYear, month: nextMonth, day });
+            
+            // ✅ CRITICAL FIX: Use Gregorian date for key generation
+            const dateStr = this.formatDateKey(
+                dateGregorian.getFullYear(),
+                dateGregorian.getMonth() + 1,
+                dateGregorian.getDate()
+            );
+            
+            html += this.renderDayCell(day, dateStr, true, false, false);
         }
 
-        const daysHtml = `
-            <div class="calendar-days">
-                ${days.map(d => {
-                    // Convert Jalali to Gregorian for storage key
-                    const greg = JalaliCalendar.jalaliToGregorian(d.year, d.month, d.day);
-                    const dateKey = this.formatDateString(greg.gy, greg.gm, greg.gd);
-                    
-                    const classes = [
-                        'day-cell',
-                        d.isOtherMonth ? 'other-month' : '',
-                        d.isToday ? 'today' : '',
-                        d.isWeekend ? 'weekend' : ''
-                    ].filter(Boolean).join(' ');
+        if (this.elements.calendarDays) {
+            this.elements.calendarDays.innerHTML = html;
+        }
+    }
 
-                    return `
-                        <div class="${classes}" 
-                             data-date="${dateKey}"
-                             data-year="${d.year}"
-                             data-month="${d.month}"
-                             data-day="${d.day}"
-                             data-other="${d.isOtherMonth}"
-                             role="button"
-                             tabindex="${d.isOtherMonth ? -1 : 0}"
-                             aria-label="${d.day} ${monthNames[d.month - 1]} ${d.year}">
-                            <span class="day-number">${d.day}</span>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        `;
+    /**
+     * Render a single day cell with proper classes and attributes
+     * @param {number} day - Day number
+     * @param {string} dateStr - Gregorian date key (YYYY-M-D)
+     * @param {boolean} isOtherMonth - Is from adjacent month
+     * @param {boolean} isToday - Is today
+     * @param {boolean} isWeekend - Is weekend (Friday)
+     * @returns {string} HTML for day cell
+     */
+    renderDayCell(day, dateStr, isOtherMonth, isToday, isWeekend) {
+        const classes = ['day-cell'];
+        
+        if (isOtherMonth) classes.push('other-month');
+        if (isToday) classes.push('today');
+        if (isWeekend) classes.push('weekend');
+        
+        // Check if this date has notes (from app state)
+        const hasNote = window.app?.state?.dateNotes?.[dateStr]?.length > 0;
+        if (hasNote) classes.push('has-note');
 
-        // Actions
-        const actionsHtml = `
-            <div class="calendar-actions">
-                <button class="action-btn" id="todayBtn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                        <line x1="16" y1="2" x2="16" y2="6"></line>
-                        <line x1="8" y1="2" x2="8" y2="6"></line>
-                        <line x1="3" y1="10" x2="21" y2="10"></line>
-                    </svg>
-                    امروز
-                </button>
-            </div>
-        `;
+        // Accessibility attributes
+        const ariaLabel = `${day} ${isToday ? '(امروز)' : ''}`;
+        const tabindex = isOtherMonth ? '-1' : '0';
 
         return `
-            ${navHtml}
-            <div class="calendar-body">
-                ${weekdaysHtml}
-                ${daysHtml}
+            <div class="${classes.join(' ')}" 
+                 data-date="${dateStr}"
+                 role="button"
+                 tabindex="${tabindex}"
+                 aria-label="${ariaLabel}">
+                <span class="day-number">${day}</span>
             </div>
-            ${actionsHtml}
         `;
     }
 
     /**
-     * Attach Navigation Event Listeners
-     * Called after each render
+     * Show fallback message when JalaliDate is not available
      */
-    attachNavigationListeners() {
-        const prevBtn = this.container.querySelector('#prevMonthBtn');
-        const nextBtn = this.container.querySelector('#nextMonthBtn');
-        const todayBtn = this.container.querySelector('#todayBtn');
-
-        if (prevBtn) {
-            prevBtn.addEventListener('click', () => this.previousMonth());
-        }
-
-        if (nextBtn) {
-            nextBtn.addEventListener('click', () => this.nextMonth());
-        }
-
-        if (todayBtn) {
-            todayBtn.addEventListener('click', () => this.goToToday());
+    showFallbackMessage() {
+        if (this.elements.calendarDays) {
+            this.elements.calendarDays.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: var(--text-secondary);">
+                    <p>⚠️ کتابخانه تقویم شمسی بارگذاری نشده است</p>
+                    <p style="font-size: 0.875rem; margin-top: 0.5rem;">
+                        لطفاً فایل jalali.js را اضافه کنید
+                    </p>
+                </div>
+            `;
         }
     }
 
     /**
-     * Attach Day Click Event Listeners
-     * PERFORMANCE OPTIMIZATION: Using Event Delegation (1 listener instead of 42)
+     * Format date key consistently (Gregorian YYYY-M-D)
+     * ✅ Always generates Gregorian keys for data consistency
+     * @param {number} year - Year
+     * @param {number} month - Month (1-12)
+     * @param {number} day - Day (1-31)
+     * @returns {string} Formatted date key
      */
-    attachDayClickListeners() {
-        const daysContainer = this.container.querySelector('.calendar-days');
-        if (!daysContainer) return;
-
-        // Remove previous listener if exists (prevent duplicates)
-        const oldListener = daysContainer._clickListener;
-        if (oldListener) {
-            daysContainer.removeEventListener('click', oldListener);
-        }
-
-        // Create new listener
-        const clickListener = (e) => {
-            const cell = e.target.closest('.day-cell');
-            if (cell) {
-                const year = parseInt(cell.dataset.year);
-                const month = parseInt(cell.dataset.month);
-                const day = parseInt(cell.dataset.day);
-                const isOther = cell.dataset.other === 'true';
-                
-                this.selectDate(year, month, day, isOther);
-            }
-        };
-
-        // Store reference for cleanup
-        daysContainer._clickListener = clickListener;
-        daysContainer.addEventListener('click', clickListener);
-
-        // Keyboard navigation support
-        daysContainer.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                const cell = e.target.closest('.day-cell');
-                if (cell) {
-                    e.preventDefault();
-                    cell.click();
-                }
-            }
-        });
+    formatDateKey(year, month, day) {
+        return `${year}-${parseInt(month)}-${parseInt(day)}`;
     }
 
     /**
-     * Setup Accessibility Attributes
+     * Get Jalali month length (handles leap years)
+     * @param {number} year - Jalali year
+     * @param {number} month - Jalali month (1-12)
+     * @returns {number} Number of days in month
      */
-    setupAccessibility() {
-        const calendarBody = this.container.querySelector('.calendar-body');
-        if (calendarBody) {
-            calendarBody.setAttribute('role', 'grid');
-            calendarBody.setAttribute('aria-label', 
-                this.type === 'gregorian' ? 'Calendar Grid' : 'تقویم شمسی'
-            );
+    jalaliMonthLength(year, month) {
+        if (month <= 6) return 31;
+        if (month <= 11) return 30;
+        return this.isJalaliLeapYear(year) ? 30 : 29;
+    }
+
+    /**
+     * Check if Jalali year is leap year
+     * ✅ This logic will be moved to jalali.js in production
+     * @param {number} year - Jalali year
+     * @returns {boolean} Is leap year
+     */
+    isJalaliLeapYear(year) {
+        // Algorithm: 33-year cycle with 8 leap years
+        const cycle = year % 33;
+        return [1, 5, 9, 13, 17, 22, 26, 30].includes(cycle);
+    }
+
+    /**
+     * Convert Gregorian date to Jalali
+     * @param {Date} date - Gregorian Date object
+     * @returns {Object} {year, month, day}
+     */
+    gregorianToJalali(date) {
+        if (window.JalaliDate) {
+            try {
+                const jd = new JalaliDate(date);
+                return {
+                    year: jd.getFullYear(),
+                    month: jd.getMonth() + 1, // JalaliDate uses 0-11
+                    day: jd.getDate()
+                };
+            } catch (error) {
+                console.error('JalaliDate conversion error:', error);
+            }
         }
 
-        const weekdays = this.container.querySelector('.calendar-weekdays');
-        if (weekdays) {
-            weekdays.setAttribute('role', 'rowgroup');
+        // ⚠️ NO FALLBACK - Return error state
+        console.error('❌ JalaliDate library required but not available');
+        return { year: 0, month: 0, day: 0 };
+    }
+
+    /**
+     * Convert Jalali date to Gregorian
+     * @param {Object} jalali - {year, month, day}
+     * @returns {Date} Gregorian Date object
+     */
+    jalaliToGregorian(jalali) {
+        if (window.JalaliDate) {
+            try {
+                // JalaliDate constructor expects (year, month, day)
+                // Month is 0-based in JalaliDate
+                const jd = new JalaliDate(jalali.year, jalali.month - 1, jalali.day);
+                return jd.toGregorian();
+            } catch (error) {
+                console.error('Jalali to Gregorian conversion error:', error);
+            }
         }
 
-        const daysContainer = this.container.querySelector('.calendar-days');
-        if (daysContainer) {
-            daysContainer.setAttribute('role', 'rowgroup');
-        }
+        // ⚠️ NO FALLBACK - Return current date to prevent crashes
+        console.error('❌ JalaliDate library required but not available');
+        return new Date();
     }
 }
 
 // ============================================
-// INITIALIZATION ON DOM READY
+// AUTO-INITIALIZATION
 // ============================================
-
 document.addEventListener('DOMContentLoaded', () => {
-    // Wait for app.js to be ready
-    if (typeof window.app !== 'undefined') {
-        initializeCalendar();
-    } else {
-        // Fallback: wait a bit for app.js
-        const checkAppReady = setInterval(() => {
-            if (typeof window.app !== 'undefined') {
-                clearInterval(checkAppReady);
-                initializeCalendar();
-            }
-        }, 50);
-        
-        // Timeout after 5 seconds
-        setTimeout(() => clearInterval(checkAppReady), 5000);
-    }
+    window.calendar = new Calendar();
 });
-
-/**
- * Initialize Calendar Instance
- */
-function initializeCalendar() {
-    window.calendar = new Calendar({
-        type: 'gregorian',
-        container: document.getElementById('calendarWidget'),
-        onDateSelect: (dateKey) => {
-            if (window.app && typeof window.app.showDateNoteModal === 'function') {
-                window.app.showDateNoteModal(dateKey);
-            }
-        }
-    });
-
-    console.log('✓ Calendar initialized successfully');
-}
